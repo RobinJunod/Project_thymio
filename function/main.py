@@ -1,8 +1,8 @@
 #%%
-
+################################## IMPORTS #########################################
 # basic computation library
 import numpy as np
-
+import math
 # package for thymio
 from tdmclient import ClientAsync, aw
 from tdmclient.atranspiler import ATranspiler
@@ -14,26 +14,82 @@ import threading
 
 # Created files
 import Thymio
+import MotionControl
+
+########################### SET GLOBAL VARIABLES ################################
+# Golbal variables (varaibles that must be shared btwn threads)
+global PROXIMITY_SENSOR, ODOMETRY
+
+# Global constants
+THYMIO_RADIUS = 47 # in [mm]
+THYMIO_SPEED_CONVERTION = 0.3175373
+
+
+# init ODOMERTRY
+ODOMETRY = [0, 0, 0, time.time()]
+
+################################# THREADS #######################################
+
+
 
 # Threading function 
-def compute_encoder(thymio, dist_r, dist_l, previous_time):
-    print('hello encoder\n')
+def update_odometry(thymio):
+    """Odometry part, thread that gives us the thymio position and angle based on the
+    motor speed measured. Change global variable odometry.
+
+    Args:
+        thymio (thymio object): the thymio object
+    """
+    # take glabal variable
+    global ODOMETRY, THYMIO_RADIUS, THYMIO_SPEED_CONVERTION
+
+    threading.Timer(1.0, update_odometry, [thymio]).start()
     [speed_l, speed_r] = thymio.get_speed()
+    # convert speed in mm/s
+    speed_l = speed_l * THYMIO_SPEED_CONVERTION
+    speed_r = speed_r * THYMIO_SPEED_CONVERTION
+    
+    [pre_pos_x, pre_pos_y, pre_angle, previous_time] = ODOMETRY
+    # delta time btwn last and new speed recording
     d_time = time.time() - previous_time
-    
-    d_dist_r = d_time * speed_r
-    d_dist_l = d_time * speed_l
-    dist_r = dist_r + d_dist_r
-    dist_l = dist_l + d_dist_l
-    
-    return dist_l, dist_l, d_dist_l, d_dist_r
+    # compute new angle
+    d_angle = (speed_r - speed_l)/(4*THYMIO_RADIUS^2) * d_time
+    angle = pre_angle + d_angle
+    # compute new pos
+    direction_x = math.cos((pre_angle + angle)/2)
+    direction_y = math.sin((pre_angle + angle)/2)
 
+    pos_x = pre_pos_x + (speed_l + speed_r)/2 * direction_x * d_time
+    pos_y = pre_pos_y + (speed_l + speed_r)/2 * direction_y * d_time
+    previous_time = time.time()
+    # output update ODOMETRY
+    ODOMETRY = pos_x, pos_y, angle, previous_time
 
+# check_prox_sensor thread
 def check_prox_sensor(thymio):
-    print("check_sensor\n")
+    """This poart focus on the obstacle detection. This thread is the most prioritised one.
+    
+
+    Args:
+        thymio (_type_): _description_
+    """
+    global PROXIMITY_SENSOR
+    #print("\nHello check_sensor")
+    threading.Timer(0.2, check_prox_sensor, [thymio]).start()
     prox_sens_values = thymio.get_sensor_values()
-    print(prox_sens_values)
-    return prox_sens_values
+    
+    # Stop obstacle condition
+    if sum(prox_sens_values[:5]) > 10:
+        thymio.set_speed([0,0])
+    
+    # update PROXIMITY_SENSOR
+    PROXIMITY_SENSOR = prox_sens_values
+
+
+def Thymio_PID_control(thymio):
+    
+
+    pass
 
 def visual_computation():
     """This part must return the thymio position and the differents points 
@@ -50,46 +106,45 @@ def visual_computation():
 def local_avoidance():
     pass
 
+
+
+
+
+################## MAIN #################################################
+
 def main():
-    inital_states = visual_computation()
-    starting_pos = [0,0]
-    starting_angle = []
     
+    starting_pos = [0,0]
+    starting_angle = [0]
     # thymio init
     thymio1 = Thymio.thymio(starting_pos, starting_angle)
+
     
-    goal_reached = False
-    dist_r =0
-    dist_l =0
-    previous_time = 10
-    loop =0
-    
+    # call thread function
+    check_prox_sensor(thymio1)
+    update_odometry(thymio1)
+    # print loop
     while 1:
-        loop +=1
-        check_prox_sensor(thymio1)
-        time.sleep(5)
-        if goal_reached == True:
+        finished = False
+        
+        time.sleep(1)
+        if PROXIMITY_SENSOR[3] != 0:
+            thymio1.set_speed([0,0])
+        else:
+            thymio1.set_speed([0,50])
+        
+        print(ODOMETRY)
+        print(thymio1.get_speed())
+        if finished:
+            thymio1.set_speed([0,0])
             break
-        if loop == 100:
-            break
-    
-main()  
+
+if __name__ == '__main__':
+    # Run only when this is the main file
+    main()
 
 
 #%%
-#def hello():
-#    print("hello, world")
-#
-#t = threading.Timer(2.0, hello)
-#t.start()  # after 30 seconds, "hello, world" will be printed
-#
-#print('hi\n')
-
-
-
-
-
-
 
 
 """
@@ -100,11 +155,8 @@ async def print_sensor_values(sensor_id, print_range=10, delta_time=0.2):
     await node.wait_for_variables({str(sensor_id)})
     for i in range(print_range):
         print(list(node[sensor_id]))
-        await client.sleep(delta_time)
-        
+        await client.sleep(delta_time)  
 await print_sensor_values('prox.ground.reflected')
-# %%
-
 
 def local_avoid(speed_robot, node):
     # global prox_and_memory
@@ -149,3 +201,4 @@ class RepeatedTimer(object):
         self._timer.cancel()
         self.is_running = False
 """
+
