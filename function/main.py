@@ -43,7 +43,7 @@ def update_odometry(thymio):
     # take glabal variable
     global ODOMETRY, THYMIO_RADIUS, THYMIO_SPEED_CONVERTION
 
-    threading.Timer(1.0, update_odometry, [thymio]).start()
+    threading.Timer(0.5, update_odometry, [thymio]).start()
     [speed_l, speed_r] = thymio.get_speed()
     # convert speed in mm/s
     speed_l = speed_l * THYMIO_SPEED_CONVERTION
@@ -63,7 +63,7 @@ def update_odometry(thymio):
     pos_y = pre_pos_y + (speed_l + speed_r)/2 * direction_y * d_time
     previous_time = time.time()
     # output update ODOMETRY
-    ODOMETRY = pos_x, pos_y, angle, previous_time
+    ODOMETRY = pos_x, pos_y, angle, previous_time, d_time
 
 # check_prox_sensor thread
 def check_prox_sensor(thymio):
@@ -75,7 +75,7 @@ def check_prox_sensor(thymio):
     """
     global PROXIMITY_SENSOR
     #print("\nHello check_sensor")
-    threading.Timer(0.2, check_prox_sensor, [thymio]).start()
+    threading.Timer(0.5, check_prox_sensor, [thymio]).start()
     prox_sens_values = thymio.get_sensor_values()
     
     # Stop obstacle condition
@@ -113,9 +113,10 @@ def local_avoidance():
 ################## MAIN #################################################
 
 def main():
-    
+    global ODOMETRY
     starting_pos = [0,0]
     starting_angle = [0]
+    starting_goal = [1000,1000]
     # thymio init
     thymio1 = Thymio.thymio(starting_pos, starting_angle)
 
@@ -123,18 +124,26 @@ def main():
     # call thread function
     check_prox_sensor(thymio1)
     update_odometry(thymio1)
-    # print loop
+    # create PID object
+    PID = MotionControl()
+    # initatate PID
+    PID.update_angle_error(starting_angle, starting_pos, starting_goal)
+  
+  
+
     while 1:
         finished = False
-        
         time.sleep(1)
-        if PROXIMITY_SENSOR[3] != 0:
-            thymio1.set_speed([0,0])
-        else:
-            thymio1.set_speed([0,50])
+        robot_angle = ODOMETRY[2]
+        robot_pos = [ODOMETRY[0], ODOMETRY[1]]
+        # update angle
+        PID.update_angle_error(robot_angle, robot_pos, starting_angle)
+        # compute PID speed
+        d_time = ODOMETRY[4]
+        [robot_speed_l, robot_speed_r] = PID.PID(d_time, 100, 100)
+        thymio1.set_speed([robot_speed_l,robot_speed_r])
         
         print(ODOMETRY)
-        print(thymio1.get_speed())
         if finished:
             thymio1.set_speed([0,0])
             break

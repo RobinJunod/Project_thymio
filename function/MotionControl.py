@@ -4,17 +4,14 @@ import math
 import matplotlib.pyplot as plt
 
 class MotionControl:
-    """
-    Make a PID controller with the error being the angle error btwn thymio angle and thymio to objective angle
-    """
-    
     def __init__(self, Kp=70, Ki=2, Kd=0.5):
-        
-        #self.thymio_pos = init_thymio_pos
-        #self.thymio_angle = init_thymio_angle
-        #self.goal_pos = init_goal_pos
-        #self.dist_frm_goal = math.sqrt((init_goal_pos[0]-init_thymio_pos[0])^2 + (init_goal_pos[0]-init_thymio_pos[0])^2)
-        #self.goal_angle = math.acos(self.dist_frm_goal/(init_goal_pos[0]-init_thymio_pos[0]))
+        """Make a PID controller with the error being the angle error btwn thymio angle and thymio to objective angle
+
+        Args:
+            Kp (int, optional): proportional coefficient. Defaults to 70.
+            Ki (int, optional): integral coefficient. Defaults to 2.
+            Kd (float, optional): derivative coefficient. Defaults to 0.5.
+        """
         self.thymio_angle = 0
         self.thymio_pos = [0,0]
         self.goal_pos = [0,0]
@@ -37,6 +34,15 @@ class MotionControl:
         
         
     def update_angle_error(self, thymio_angle, thymio_pos, goal_pos):
+        """Compute the angle error. 
+        The angle error is the angle btwn the robot direction and the robot-to-goal angle.
+        The thymio angle is already known but we need to compute the robot-to-goal angle using the position. 
+        
+        Args:
+            thymio_angle (_type_): _description_
+            thymio_pos (_type_): _description_
+            goal_pos (_type_): _description_
+        """
         self.thymio_pos = thymio_pos
         self.thymio_angle = thymio_angle
         self.goal_pos = goal_pos
@@ -44,12 +50,25 @@ class MotionControl:
         y_ = goal_pos[1] - thymio_pos[1]
         x_ = goal_pos[0] - thymio_pos[0]
 
+        # function to get the angle without /0 problem, and good computation speed
         self.goal_angle = math.atan2(y_,x_)
         
         self.angle_error = self.goal_angle - self.thymio_angle
         
 
     def PID(self, d_time, ref_speed_l, ref_speed_r):
+        """PID implementation. We 
+
+        Args:
+            d_time (float): time btwn the last and new speed allocation
+            ref_speed_l (float): left reference speed at which the robot 
+                                 is supposed to go in a straight line
+            ref_speed_r (float): right reference speed at which the robot 
+                                 is supposed to go in a straight line
+
+        Returns:
+            float list: motors speed
+        """
         # Compute integral and derivative
         self.PID_integral = self.PID_integral + self.angle_error * d_time
 
@@ -68,7 +87,21 @@ class MotionControl:
 
     
     def plant(self,  speed_l, speed_r, pre_pos_x, pre_pos_y, pre_angle, d_time):
-        
+        """This function is used to simulate the PID controller. This can help us tuning the PID.
+        Mainly used for the graphic. It is used to set the new motor speed found by the PID. This 
+        part is like the odomerty part expect that the robot has a perfect(no noise) behaviour.
+
+        Args:
+            speed_l (float): motor left speed
+            speed_r (float): motor right speed
+            pre_pos_x (float): previous robot x position
+            pre_pos_y (float): previous robot y position
+            pre_angle (float): previous robot angle
+            d_time (float): time between 2 values
+
+        Returns:
+            float list: position and angle of the robot
+        """
         THYMIO_SPEED_CONVERTION = 0.3175373
         THYMIO_RADIUS = 47
         # convert speed in mm/s
@@ -93,7 +126,7 @@ class MotionControl:
 if __name__=='__main__':
     # TODO: an implementation to show the tymio implementation
     
-    # TODO: initatte robot and goal
+    # initatte robot and goal
     init_goal_pos = [1000, 1000]
     init_robot_speed = [100,100]
     init_robot_angle = -2
@@ -110,23 +143,21 @@ if __name__=='__main__':
     # Create PID controller
     PID = MotionControl()
     PID.update_angle_error(robot_angle, robot_pos, goal_pos)
-    # TODO: loop
+    # loop
     loop = 0
     while True:
         loop += 1
         goal_achieved = False
+        # compute error
         PID.update_angle_error(robot_angle, robot_pos, goal_pos)
-        
+        # compute PID speed
         [robot_speed[0], robot_speed[1]] = PID.PID(d_time, 100, 100)
+        # set speed and get new position and angle value
         [robot_pos[0], robot_pos[1], robot_angle] = PID.plant(robot_speed[0], robot_speed[1], robot_pos[0], robot_pos[1], robot_angle, d_time)
         thymio_trajectory.append((robot_pos[0], robot_pos[1]))
         manathan_dist_to_goal = abs(goal_pos[1]-robot_pos[1]) + abs(goal_pos[0]-robot_pos[0])
         if manathan_dist_to_goal < 200 or loop > 300:
             break
-        
-    
-    # TODO: compute PID speed
-    # TODO: set speed and get new position and angle value
     
     # plot trajectorie
     plt.scatter(*zip(*thymio_trajectory))
