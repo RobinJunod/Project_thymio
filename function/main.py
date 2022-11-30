@@ -17,6 +17,7 @@ import threading
 import Thymio
 import MotionControl
 import vision
+import filtering
 
 ########################### SET GLOBAL VARIABLES ################################
 # Golbal variables (varaibles that must be shared btwn threads)
@@ -63,6 +64,11 @@ ODOMETRY = [0, 0, 0, time.time()]
 ################################# THREADS #######################################
 
 #%%
+
+###### for filtering tests #####
+def update_odo():
+    ODOMETRY[2] = ODOMETRY[2] + 0.2
+####################################
 
 # Threading function 
 def update_odometry(thymio):
@@ -167,7 +173,8 @@ def main():
                 ret, frame = cap.read()
             # Initialize MAP
             rescMap, M, MAPwidth, MAPheight, b_coords, goal_coords, obst_coords, POS_VISION, ANGLE_VISION = vision.map_init(frame)
-
+        ODOMETRY[2] = ANGLE_VISION
+        Sigma_angle = 0
         ##### VISUALIZATION #########
         x_g = math.floor(goal_coords[0])
         y_g = math.floor(goal_coords[1])
@@ -233,7 +240,7 @@ def main():
             cv2.imshow("Display window", image)
             ##### END VISUALIZATION ############
 
-            print(POS_VISION)
+            #print(POS_VISION)
             #rescMapTOT.append(rescMap)
             #t_coordsTOT.append(t_coords)
             #t_angleTOT.append(t_angle)
@@ -241,9 +248,12 @@ def main():
             D2 = abs(POS_VISION[1]-goal_coords[1])
             
             ########## Filtering should go here ############
-            time.sleep(0.3)
-
-
+            ODOMETRY[2], Sigma_angle = filtering.kalmanFilterAngle(ODOMETRY[2],ANGLE_VISION, Sigma_angle)
+            print("Vision angle = " + str(ANGLE_VISION))
+            print("Filtered = " + str(ODOMETRY[2]))
+            update_odo()
+            print("After odometry = " + str(ODOMETRY[2]))
+            time.sleep(0.5)
             # Press esc on keyboard to  exit
             if cv2.waitKey(1) == 27:
                 break
