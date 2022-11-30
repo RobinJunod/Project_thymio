@@ -1,6 +1,7 @@
 #%%
 ################################## IMPORTS #########################################
 # basic computation library
+import cv2
 import numpy as np
 import math
 # package for thymio
@@ -15,6 +16,7 @@ import threading
 # Created files
 import Thymio
 import MotionControl
+import vision
 
 ########################### SET GLOBAL VARIABLES ################################
 # Golbal variables (varaibles that must be shared btwn threads)
@@ -24,13 +26,43 @@ global PROXIMITY_SENSOR, ODOMETRY
 THYMIO_RADIUS = 47 # in [mm]
 THYMIO_SPEED_CONVERTION = 0.3175373
 
+####### Testing without camera ???? ####
+WITHOUT_CAMERA = True
+I_PIC = 1
+#############
+CAMERA = 2
+#k_sobel = 5
+
+MAP_WIDTH = 1070 # mm
+THYMIO_WIDTH = 110 # mm
+
+RED_L = np.array([105,75,129],np.uint8)  # Set the Lower and higher range value of color for filter
+RED_H = np.array([179,160,255],np.uint8)
+
+GREEN_L = np.array([0, 60, 90],np.uint8)
+GREEN_H = np.array([87, 255, 255],np.uint8)
+
+BLUE_L = np.array([0, 79, 154],np.uint8)
+BLUE_H = np.array([156, 255, 255],np.uint8)
+
+YELLOW_L = np.array([0, 0, 158],np.uint8)
+YELLOW_H = np.array([179, 240, 255],np.uint8)
+
+D1 = 100.0 # Initialize distance to goal to something bigger than the threshold
+D2 = 100.0
+
+# VARIABLE INIT
+rescMapTOT = []
+t_coordsTOT = []
+t_angleTOT = []
+
 
 # init ODOMERTRY
 ODOMETRY = [0, 0, 0, time.time()]
 
 ################################# THREADS #######################################
 
-
+#%%
 
 # Threading function 
 def update_odometry(thymio):
@@ -86,26 +118,6 @@ def check_prox_sensor(thymio):
     PROXIMITY_SENSOR = prox_sens_values
 
 
-def Thymio_PID_control(thymio):
-    
-
-    pass
-
-def visual_computation():
-    """This part must return the thymio position and the differents points 
-    the thymio must pass by.
-
-    Returns:
-        thymio_pos_visual : np.array for size 1x2
-        points_list : list of intermediate points
-        ending_point : np.array of goal
-    """
-    # TODO : IMPLEMENT THIS PART
-    return 0
-
-def local_avoidance():
-    pass
-
 
 
 
@@ -113,24 +125,149 @@ def local_avoidance():
 ################## MAIN #################################################
 
 def main():
-    global ODOMETRY
-    starting_pos = [0,0]
-    starting_angle = [0]
-    starting_goal = [1000,1000]
+    global ODOMETRY, I_PIC, POS_VISION, ANGLE_VISION, D1, D2 
+    #starting_pos = [0,0]
+    #starting_angle = [0]
+    #starting_goal = [1000,1000]
+
+    # Open camera
+    cap = cv2.VideoCapture(CAMERA)
+    # Check if camera opened successfully
+    if (cap.isOpened()== False): 
+        print("Error opening video stream or file")
+    else:
+        print("Camera is openend")
+
+    #cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    #cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+    # Need this loop to work
+    while(cap.isOpened()) or (WITHOUT_CAMERA == True):
+        # Take first picture for init
+        ####### In case of testing without camera #######
+        if WITHOUT_CAMERA == True:
+            ret = True
+            rescMap = cv2.imread('Images/ThymioTest0.jpg', cv2.IMREAD_COLOR)
+            ### Find Goal
+            goal_coords = vision.findGoal(rescMap,RED_L,RED_H,20,255)
+
+            ### Find Obstacles
+            obst_coords, imOBST = vision.findObst(rescMap,BLUE_L,BLUE_H,20,10)
+
+            ### Find Thymio
+            POS_VISION, ANGLE_VISION = vision.findThymio(rescMap, GREEN_L, GREEN_H,3,17,20)
+        else:
+            ret, frame = cap.read()
+
+            # Deal with problem at reading
+            while ret == False:
+                print("Can't receive frame. Retrying ...")
+                cap.release()
+                cap = cv2.VideoCapture(CAMERA)
+                ret, frame = cap.read()
+            # Initialize MAP
+            rescMap, M, MAPwidth, MAPheight, b_coords, goal_coords, obst_coords, POS_VISION, ANGLE_VISION = vision.map_init(frame)
+
+        ##### VISUALIZATION #########
+        x_g = math.floor(goal_coords[0])
+        y_g = math.floor(goal_coords[1])
+        x_t = math.floor(POS_VISION[0])
+        y_t = math.floor(POS_VISION[1])
+        imageInit = cv2.circle(rescMap, (x_g,y_g), 60, (255,0,0), 2)
+        for obst in obst_coords:
+            pts = obst
+            pts = pts.reshape((-1,1,2))
+            imageInit = cv2.polylines(imageInit,[pts.astype(np.int32)],True,(0,0,255))
+        imageInit = cv2.line(imageInit,(x_t,y_t),(x_t+30,math.floor(y_t-30*np.tan(ANGLE_VISION))),(0,0,0),5)
+        imageInit = cv2.circle(imageInit, (x_t,y_t), 30, (0,255,0), 2)
+        cv2.imshow("Display window", imageInit)
+        cv2.waitKey(0)
+        ##### END VISUALIZATION ############
+
+        time.sleep(3)
+        
+        print(goal_coords)
+        print(POS_VISION)
+        #rescMapTOT.append(rescMap)
+        #t_coordsTOT.append(t_coords)
+        #t_angleTOT.append(t_angle)
+        
+        ####### Path planning should go here ###########
+        print("Activate Thymio")
+    
+        print("Let's go")
+        
+        # Entering main loop (while thymio not in goal region)
+        while D1 > 60 or D2 > 60:
+            ########### Motion control should go here ###########
+            
+            
+            ########### Local Avoidance should go here (in background) ##########
+            
+            
+            ########### Update Thymio Position and Angle ############
+            # Capture new frame
+            if WITHOUT_CAMERA == True:
+                ret = True
+                img_name = "Images/ThymioTest" + str(I_PIC) +".jpg"
+                I_PIC += 1
+                rescMap = cv2.imread(img_name, cv2.IMREAD_COLOR)
+                ### Find Thymio
+                POS_VISION, ANGLE_VISION = vision.findThymio(rescMap, GREEN_L, GREEN_H,3,17,20)
+            else:
+                ret, frame = cap.read()
+                # Return Thymio coordinates and angle
+                rescMap, POS_VISION, ANGLE_VISION = vision.updateThymioPos(frame)
+
+            ##### VISUALIZATION #########
+            image = cv2.circle(rescMap, (math.floor(POS_VISION[0]),math.floor(POS_VISION[1])), 30, (0,255,0), 2)
+            x_t = math.floor(POS_VISION[0])
+            y_t = math.floor(POS_VISION[1])
+            image = cv2.circle(image, (x_g,y_g), 60, (255,0,0), 2)
+            for obst in obst_coords:
+                pts = obst
+                pts = pts.reshape((-1,1,2))
+                image = cv2.polylines(image,[pts.astype(np.int32)],True,(0,0,255))
+            image = cv2.line(image,(x_t,y_t),(x_t+30,math.floor(y_t-30*np.tan(ANGLE_VISION))),(0,0,0),5)
+            image = cv2.circle(image, (x_t,y_t), 30, (0,255,0), 2)
+            cv2.imshow("Display window", image)
+            ##### END VISUALIZATION ############
+
+            print(POS_VISION)
+            #rescMapTOT.append(rescMap)
+            #t_coordsTOT.append(t_coords)
+            #t_angleTOT.append(t_angle)
+            D1 = abs(POS_VISION[0]-goal_coords[0])
+            D2 = abs(POS_VISION[1]-goal_coords[1])
+            
+            ########## Filtering should go here ############
+            time.sleep(0.3)
+
+
+            # Press esc on keyboard to  exit
+            if cv2.waitKey(1) == 27:
+                break
+        break
+    cv2.destroyAllWindows()
+        
+    if WITHOUT_CAMERA == False:
+        # When everything done, release the video capture object
+        cap.release()
+
     # thymio init
-    thymio1 = Thymio.thymio(starting_pos, starting_angle)
+    #thymio1 = Thymio.thymio(starting_pos, starting_angle)
 
     
     # call thread function
-    check_prox_sensor(thymio1)
-    update_odometry(thymio1)
+    #check_prox_sensor(thymio1)
+    #update_odometry(thymio1)
     # create PID object
-    PID = MotionControl()
+    #PID = MotionControl()
     # initatate PID
-    PID.update_angle_error(starting_angle, starting_pos, starting_goal)
+    #PID.update_angle_error(starting_angle, starting_pos, starting_goal)
   
   
-
+    """
     while 1:
         finished = False
         time.sleep(1)
@@ -147,6 +284,7 @@ def main():
         if finished:
             thymio1.set_speed([0,0])
             break
+    """
 
 if __name__ == '__main__':
     # Run only when this is the main file

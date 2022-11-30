@@ -293,7 +293,7 @@ def findObst(img,lower_range,upper_range,TRESH_L,TRESH_H):
 		approx = np.array([], dtype=object)
 		approx = cv2.approxPolyDP(cnt, 0.03 * cv2.arcLength(cnt, True), True)
 		area = cv2.contourArea(approx)
-		if 5000 < area < 80000:
+		if 3000 < area < 80000:
 			approx_array_exp.append(approx.reshape(-1, 2))
 
 	exp_img_app = cv2.drawContours(exp_img.copy(), approx_array_exp, -1, 255, thickness=cv2.FILLED)
