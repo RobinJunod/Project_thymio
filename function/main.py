@@ -4,6 +4,7 @@
 import cv2
 import numpy as np
 import math
+import random # for test onla
 # package for thymio
 from tdmclient import ClientAsync, aw
 from tdmclient.atranspiler import ATranspiler
@@ -67,7 +68,7 @@ ODOMETRY = [0, 0, 0, time.time()]
 
 ###### for filtering tests #####
 def update_odo():
-    ODOMETRY[2] = ODOMETRY[2] + 0.2
+    ODOMETRY[2] = ODOMETRY[2] + random.randrange(-20,20)/100
 ####################################
 
 # Threading function 
