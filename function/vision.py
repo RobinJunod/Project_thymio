@@ -272,7 +272,7 @@ def findObst(img,lower_range,upper_range,TRESH_L,TRESH_H):
 	for cnt in contours:
 			approx = cv2.approxPolyDP(cnt, 0.03 * cv2.arcLength(cnt, True), True)
 			area = cv2.contourArea(approx)
-			if 0 < area < 10000:
+			if 1000 < area < 10000:
 				approx_array.append(approx.reshape(-1, 2))
 	    
 
@@ -282,7 +282,7 @@ def findObst(img,lower_range,upper_range,TRESH_L,TRESH_H):
 			e1 = cnt[(j-1)%cnt.shape[0]]-corner
 			e2 = cnt[(j+1)%cnt.shape[0]]-corner
 			bisector = (e1 / np.linalg.norm(e1) + e2 / np.linalg.norm(e2))
-			exp_cnt[i][j] = corner - half_thymio_pix * bisector / np.linalg.norm(bisector)
+			exp_cnt[i][j] = corner - (half_thymio_pix + 15) * bisector / np.linalg.norm(bisector)
 
 	exp_img = cv2.drawContours(binary_img.copy(), exp_cnt, -1, 255, thickness=cv2.FILLED)
 
@@ -293,7 +293,7 @@ def findObst(img,lower_range,upper_range,TRESH_L,TRESH_H):
 		approx = np.array([], dtype=object)
 		approx = cv2.approxPolyDP(cnt, 0.03 * cv2.arcLength(cnt, True), True)
 		area = cv2.contourArea(approx)
-		if 3000 < area < 80000:
+		if 5000 < area < 80000:
 			approx_array_exp.append(approx.reshape(-1, 2))
 
 	exp_img_app = cv2.drawContours(exp_img.copy(), approx_array_exp, -1, 255, thickness=cv2.FILLED)

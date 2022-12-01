@@ -29,7 +29,7 @@ THYMIO_RADIUS = 47 # in [mm]
 THYMIO_SPEED_CONVERTION = 0.3175373
 
 ####### Testing without camera ???? ####
-WITHOUT_CAMERA = True
+WITHOUT_CAMERA = False
 I_PIC = 1
 #############
 CAMERA = 2
@@ -181,11 +181,11 @@ def main():
         y_g = math.floor(goal_coords[1])
         x_t = math.floor(POS_VISION[0])
         y_t = math.floor(POS_VISION[1])
-        imageInit = cv2.circle(rescMap, (x_g,y_g), 60, (255,0,0), 2)
+        imageInit = cv2.circle(rescMap, (x_g,y_g), 30, (0,0,255), 2)
         for obst in obst_coords:
             pts = obst
             pts = pts.reshape((-1,1,2))
-            imageInit = cv2.polylines(imageInit,[pts.astype(np.int32)],True,(0,0,255))
+            imageInit = cv2.polylines(imageInit,[pts.astype(np.int32)],True,(255,0,0))
         imageInit = cv2.line(imageInit,(x_t,y_t),(x_t+30,math.floor(y_t-30*np.tan(ANGLE_VISION))),(0,0,0),5)
         imageInit = cv2.circle(imageInit, (x_t,y_t), 30, (0,255,0), 2)
         cv2.imshow("Display window", imageInit)
@@ -231,11 +231,11 @@ def main():
             image = cv2.circle(rescMap, (math.floor(POS_VISION[0]),math.floor(POS_VISION[1])), 30, (0,255,0), 2)
             x_t = math.floor(POS_VISION[0])
             y_t = math.floor(POS_VISION[1])
-            image = cv2.circle(image, (x_g,y_g), 60, (255,0,0), 2)
+            image = cv2.circle(image, (x_g,y_g), 30, (0,0,255), 2)
             for obst in obst_coords:
                 pts = obst
                 pts = pts.reshape((-1,1,2))
-                image = cv2.polylines(image,[pts.astype(np.int32)],True,(0,0,255))
+                image = cv2.polylines(image,[pts.astype(np.int32)],True,(255,0,0))
             image = cv2.line(image,(x_t,y_t),(x_t+30,math.floor(y_t-30*np.tan(ANGLE_VISION))),(0,0,0),5)
             image = cv2.circle(image, (x_t,y_t), 30, (0,255,0), 2)
             cv2.imshow("Display window", image)
