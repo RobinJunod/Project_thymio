@@ -1,5 +1,8 @@
 import math
 import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+
 class Global_Navigation:
     def __init__(self,obstacles_pos,thymio_pos,goal_pos,map_size):            
         #convert the obstacle_pos as list of lists of tuples instead list of np.ndarray of tuples for next calculations
@@ -9,10 +12,19 @@ class Global_Navigation:
             for point in obstacle:
                 self.all_obstacles[index].append((point[0],point[1]))
             
+        self.raw_obstacles_pos=obstacles_pos
         self.thymio_pos=(thymio_pos[0],thymio_pos[1])
         self.goal_pos=(goal_pos[0],goal_pos[1])
+        self.all_nodes=[]
+        self.all_nodes.append(self.thymio_pos)
+        self.all_nodes.append(self.goal_pos)      
+        for obstacle in self.all_obstacles:
+            for node in obstacle:
+                self.all_nodes.append((node[0],node[1]))
+        
         self.max_valx=map_size[0]
         self.max_valy=map_size[1]
+        self.nodes_neigbors={}
         self.path=[]
         
         
@@ -230,15 +242,43 @@ class Global_Navigation:
 
 #################################################################
     
-    def create_path(self):
-        all_nodes=[]
-        all_nodes.append(self.thymio_pos)
-        all_nodes.append(self.goal_pos)      
-        for obstacle in self.all_obstacles:
-            for node in obstacle:
-                all_nodes.append((node[0],node[1]))
-                
-        nodes_neigbors=self.find_neighbors(self.all_obstacles,all_nodes,self.thymio_pos,self.goal_pos)
+    def create_path(self):           
+        self.nodes_neigbors=self.find_neighbors(self.all_obstacles,self.all_nodes,self.thymio_pos,self.goal_pos)
         
-        self.path=self.A_Star(self.thymio_pos, self.goal_pos, self.h_vertices_obstacles(all_nodes,self.goal_pos), all_nodes,nodes_neigbors ,self.max_valx,self.max_valy)
+        self.path=self.A_Star(self.thymio_pos, self.goal_pos, self.h_vertices_obstacles(self.all_nodes,self.goal_pos), self.all_nodes,self.nodes_neigbors ,self.max_valx,self.max_valy)
         return self.path
+
+        
+    
+    
+##############################################################
+
+############################ Plots ###########################
+    
+    def plot_visibility_graph(self): #have to use method create_path before using this one
+        Img=np.zeros((self.max_valy, self.max_valx,3), dtype='uint8')
+
+        for obstacle in self.raw_obstacles_pos:
+            cv2.polylines(Img, [obstacle.reshape((-1, 1, 2))], True, (255,255,0), 5) 
+
+        cv2.circle(Img, (round(self.goal_pos[0]),round(self.goal_pos[1])), 5, (255, 0, 0), 5)
+        cv2.circle(Img, (round(self.thymio_pos[0]),round(self.thymio_pos[1])), 5, (0, 0, 255), 5)
+
+        for node in self.nodes_neigbors:
+            for neighbor in self.nodes_neigbors[node]:
+                image = cv2.line(Img, (round(node[0]),round(node[1])), (round(neighbor[0]),round(neighbor[1])), (100, 100, 255), 2)
+        plt.imshow(image)
+        
+        
+    def plot_shortest_path(self):#have to use method create_path before using this one
+        Img=np.zeros((self.max_valy, self.max_valx,3), dtype='uint8')
+        for obstacle in self.raw_obstacles_pos:
+            image = cv2.polylines(Img, [obstacle.reshape((-1, 1, 2))], True, (255,255,0), 5) 
+        cv2.circle(Img, (round(self.goal_pos[0]),round(self.goal_pos[1])), 5, (255, 0, 0), 5)
+        cv2.circle(Img, (round(self.thymio_pos[0]),round(self.thymio_pos[1])), 5, (0, 0, 255), 5)
+
+        cv2.polylines(Img, np.int32([np.array(self.path).reshape((-1, 1, 2))]), False, (200, 0, 255), 3) 
+
+        plt.imshow(image)
+
+
