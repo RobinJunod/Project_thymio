@@ -93,11 +93,24 @@ class Global_Navigation:
             
         neighbors = {node: [] for node in all_nodes}
    
+
+        #if the nodes of obstacles are too close from the edges of the maps, don't add them to the visiblity graph
+        nodes_close_edges=[]
+        for obstacle in all_obstacles:
+            for node in obstacle:
+                if (node[0]< 38) or (node[0]> self.max_valx-38) or (node[1]<38) or (node[1]>self.max_valy-38):
+                    nodes_close_edges.append(node)
+
         for i in range(len(all_nodes)): 
+            if all_nodes[i] in nodes_close_edges:
+                    continue
             for j in range(len(all_nodes) - i - 1):
            
                 intersection=False
-                        
+                
+                if all_nodes[i+j+1] in nodes_close_edges:
+                    continue
+                
                 tmp_link1=[all_nodes[i],all_nodes[i+j+1]]
             
                 for obstacle in all_obstacles:
@@ -153,10 +166,6 @@ class Global_Navigation:
                 if intersection==False:
                     neighbors[all_nodes[i]].append(all_nodes[i+j+1])
                     neighbors[all_nodes[i+j+1]].append(all_nodes[i])
-
-                
-                
-    
     
         return neighbors
     
@@ -280,5 +289,3 @@ class Global_Navigation:
         cv2.polylines(Img, np.int32([np.array(self.path).reshape((-1, 1, 2))]), False, (200, 0, 255), 3) 
 
         plt.imshow(image)
-
-
