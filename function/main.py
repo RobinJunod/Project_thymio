@@ -12,13 +12,15 @@ from tdmclient.atranspiler import ATranspiler
 # package for threading
 import time
 import asyncio
-import threading
+
 
 # Created files
-import Thymio
+#import Thymio
 import MotionControl
 import vision
-import filtering
+import setThymioSpeed
+#import filtering
+import Global_Navigation
 
 ########################### SET GLOBAL VARIABLES ################################
 # Golbal variables (varaibles that must be shared btwn threads)
@@ -59,6 +61,7 @@ t_coordsTOT = []
 t_angleTOT = []
 
 
+
 # init ODOMERTRY
 ODOMETRY = [0, 0, 0, time.time()]
 
@@ -78,12 +81,12 @@ def update_odometry(thymio):
 
     Args:
         thymio (thymio object): the thymio object
-    """
+   
     # take glabal variable
     global ODOMETRY, THYMIO_RADIUS, THYMIO_SPEED_CONVERTION
 
-    threading.Timer(0.5, update_odometry, [thymio]).start()
-    [speed_l, speed_r] = thymio.get_speed()
+    #threading.Timer(0.5, update_odometry, [thymio]).start()
+    #[speed_l, speed_r] = thymio.get_speed()
     # convert speed in mm/s
     speed_l = speed_l * THYMIO_SPEED_CONVERTION
     speed_r = speed_r * THYMIO_SPEED_CONVERTION
@@ -103,40 +106,17 @@ def update_odometry(thymio):
     previous_time = time.time()
     # output update ODOMETRY
     ODOMETRY = pos_x, pos_y, angle, previous_time, d_time
-
-# check_prox_sensor thread
-def check_prox_sensor(thymio):
-    """This poart focus on the obstacle detection. This thread is the most prioritised one.
-    
-
-    Args:
-        thymio (_type_): _description_
     """
-    global PROXIMITY_SENSOR
-    #print("\nHello check_sensor")
-    threading.Timer(0.5, check_prox_sensor, [thymio]).start()
-    prox_sens_values = thymio.get_sensor_values()
-    
-    # Stop obstacle condition
-    if sum(prox_sens_values[:5]) > 10:
-        thymio.set_speed([0,0])
-    
-    # update PROXIMITY_SENSOR
-    PROXIMITY_SENSOR = prox_sens_values
-
-
-
-
-
 
 ################## MAIN #################################################
 
 def main():
     global ODOMETRY, I_PIC, POS_VISION, ANGLE_VISION, D1, D2 
+    
     #starting_pos = [0,0]
     #starting_angle = [0]
     #starting_goal = [1000,1000]
-
+  
     # Open camera
     cap = cv2.VideoCapture(CAMERA)
     # Check if camera opened successfully
@@ -164,18 +144,31 @@ def main():
             ### Find Thymio
             POS_VISION, ANGLE_VISION = vision.findThymio(rescMap, GREEN_L, GREEN_H,3,17,20)
         else:
-            ret, frame = cap.read()
+            for i in range(1,20):
+                ret, frame = cap.read()
+                i +=1
 
             # Deal with problem at reading
             while ret == False:
                 print("Can't receive frame. Retrying ...")
                 cap.release()
                 cap = cv2.VideoCapture(CAMERA)
-                ret, frame = cap.read()
+                for i in range(1,20):
+                    ret, frame = cap.read()
+                    i+=1
             # Initialize MAP
             rescMap, M, MAPwidth, MAPheight, b_coords, goal_coords, obst_coords, POS_VISION, ANGLE_VISION = vision.map_init(frame)
-        ODOMETRY[2] = ANGLE_VISION
-        Sigma_angle = 0
+        previous_time = time.time()
+        ############ Path planning #############
+        mapSize = [MAPwidth, MAPheight]
+        test = Global_Navigation.Global_Navigation(obst_coords,POS_VISION,goal_coords,mapSize)        
+        shortestpath=test.create_path()
+        print(shortestpath)
+        #test.plot_visibility_graph()
+
+        ################################
+        
+        
         ##### VISUALIZATION #########
         x_g = math.floor(goal_coords[0])
         y_g = math.floor(goal_coords[1])
@@ -188,27 +181,49 @@ def main():
             imageInit = cv2.polylines(imageInit,[pts.astype(np.int32)],True,(255,0,0))
         imageInit = cv2.line(imageInit,(x_t,y_t),(x_t+30,math.floor(y_t-30*np.tan(ANGLE_VISION))),(0,0,0),5)
         imageInit = cv2.circle(imageInit, (x_t,y_t), 30, (0,255,0), 2)
+        imageInit = cv2.polylines(imageInit, np.int32([np.array(shortestpath).reshape((-1, 1, 2))]), False, (200, 0, 255), 3)
         cv2.imshow("Display window", imageInit)
         cv2.waitKey(0)
         ##### END VISUALIZATION ############
 
-        time.sleep(3)
-        
+        time.sleep(1)
+        ODOMETRY[0] = POS_VISION[0]
+        ODOMETRY[1] = POS_VISION[1]
+        ODOMETRY[2] = ANGLE_VISION
+        Sigma_angle = 0
+        ind_next =1
+        next_point = shortestpath[ind_next]
         print(goal_coords)
         print(POS_VISION)
-        #rescMapTOT.append(rescMap)
-        #t_coordsTOT.append(t_coords)
-        #t_angleTOT.append(t_angle)
-        
-        ####### Path planning should go here ###########
         print("Activate Thymio")
-    
         print("Let's go")
-        
+        #thymio1 = Thymio.thymio(POS_VISION, ANGLE_VISION)
+
         # Entering main loop (while thymio not in goal region)
         while D1 > 60 or D2 > 60:
             ########### Motion control should go here ###########
+            #time.sleep(1)
+            robot_angle = ODOMETRY[2]
+            robot_pos = [ODOMETRY[0], ODOMETRY[1]]
+
+            if (abs(ODOMETRY[0]-next_point[0]) < 20 and abs(ODOMETRY[1]-next_point[1]) < 20):
+                ind_next += 1
+
+            next_point = shortestpath[ind_next]
+            PID = MotionControl.MotionControl()
+            # update angle
+            PID.update_angle_error(robot_angle, robot_pos, next_point)
+            # compute PID speed
+            d_time = time.time() - previous_time
+            #d_time = ODOMETRY[4]
+            [robot_speed_l, robot_speed_r] = PID.PID(d_time, 100, 100)
+            vL = math.floor(robot_speed_l)
+            vR = math.floor(robot_speed_r)
+            tutu = setThymioSpeed.setThymioSpeed()
+            tutu.runClas(vL, vR)
             
+
+
             
             ########### Local Avoidance should go here (in background) ##########
             
@@ -227,6 +242,10 @@ def main():
                 # Return Thymio coordinates and angle
                 rescMap, POS_VISION, ANGLE_VISION = vision.updateThymioPos(frame)
 
+            ODOMETRY[0] = POS_VISION[0]
+            ODOMETRY[1] = POS_VISION[1]
+            ODOMETRY[2] = ANGLE_VISION
+
             ##### VISUALIZATION #########
             image = cv2.circle(rescMap, (math.floor(POS_VISION[0]),math.floor(POS_VISION[1])), 30, (0,255,0), 2)
             x_t = math.floor(POS_VISION[0])
@@ -238,28 +257,32 @@ def main():
                 image = cv2.polylines(image,[pts.astype(np.int32)],True,(255,0,0))
             image = cv2.line(image,(x_t,y_t),(x_t+30,math.floor(y_t-30*np.tan(ANGLE_VISION))),(0,0,0),5)
             image = cv2.circle(image, (x_t,y_t), 30, (0,255,0), 2)
+            image = cv2.polylines(image, np.int32([np.array(shortestpath).reshape((-1, 1, 2))]), False, (200, 0, 255), 3)
             cv2.imshow("Display window", image)
             ##### END VISUALIZATION ############
 
-            #print(POS_VISION)
-            #rescMapTOT.append(rescMap)
-            #t_coordsTOT.append(t_coords)
-            #t_angleTOT.append(t_angle)
+            # Compute distance to goal
             D1 = abs(POS_VISION[0]-goal_coords[0])
             D2 = abs(POS_VISION[1]-goal_coords[1])
             
+
+            previous_time = time.time()
             ########## Filtering should go here ############
-            ODOMETRY[2], Sigma_angle = filtering.kalmanFilterAngle(ODOMETRY[2],ANGLE_VISION, Sigma_angle)
-            print("Vision angle = " + str(ANGLE_VISION))
-            print("Filtered = " + str(ODOMETRY[2]))
-            update_odo()
-            print("After odometry = " + str(ODOMETRY[2]))
-            time.sleep(0.5)
+            #ODOMETRY[2], Sigma_angle = filtering.kalmanFilterAngle(ODOMETRY[2],ANGLE_VISION, Sigma_angle)
+            #print("Vision angle = " + str(ANGLE_VISION))
+            #print("Filtered = " + str(ODOMETRY[2]))
+            #update_odo()
+            #print("After odometry = " + str(ODOMETRY[2]))
+            ##################################################
+            time.sleep(0.1)
             # Press esc on keyboard to  exit
             if cv2.waitKey(1) == 27:
                 break
         break
+    tutu.runClas(0, 0)
     cv2.destroyAllWindows()
+
+    
         
     if WITHOUT_CAMERA == False:
         # When everything done, release the video capture object

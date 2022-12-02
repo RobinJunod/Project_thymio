@@ -47,7 +47,7 @@ class MotionControl:
         self.thymio_angle = thymio_angle
         self.goal_pos = goal_pos
         
-        y_ = goal_pos[1] - thymio_pos[1]
+        y_ = thymio_pos[1] - goal_pos[1]
         x_ = goal_pos[0] - thymio_pos[0]
 
         # function to get the angle without /0 problem, and good computation speed
@@ -83,7 +83,7 @@ class MotionControl:
         self.pre_angle_error = self.angle_error
 
         # Wheel speed
-        return [ref_speed_l + self.u_t, ref_speed_r - self.u_t]
+        return [ref_speed_l - self.u_t, ref_speed_r + self.u_t]
 
     
     def plant(self,  speed_l, speed_r, pre_pos_x, pre_pos_y, pre_angle, d_time):
