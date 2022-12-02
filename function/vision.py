@@ -22,78 +22,9 @@ BLUE_H = np.array([156, 255, 255],np.uint8)
 YELLOW_L = np.array([0, 0, 158],np.uint8)
 YELLOW_H = np.array([179, 240, 255],np.uint8)
 
-half_thymio_pix = 23
+half_thymio_pix = 38
 
-
-def webcamShow(n):
-    # Create a VideoCapture object and read from input file
-    # If the input is the camera, pass 0 instead of the video file name
-    cap = cv2.VideoCapture(n)
-
-    # Check if camera opened successfully
-    if (cap.isOpened()== False): 
-        print("Error opening video stream or file")
-    else:
-        print("Everything fine")
-
-    # Read until video is completed
-    while(cap.isOpened()):
-        # Capture frame-by-frame
-        ret, frame = cap.read()
-        if ret == True:
-
-            # Display the resulting frame
-            cv2.imshow('Frame',frame)
-
-            # Press esc on keyboard to  exit
-            if cv2.waitKey(1) == 27:
-                break
-
-        # Break the loop
-        else: 
-            break
-
-        # When everything done, release the video capture object
-    cap.release()
-
-    # Closes all the frames
-    cv2.destroyAllWindows()
     
-    
-def takePicture(n,img_name):
-    cam = cv2.VideoCapture(n)
-    check, frame = cam.read()
-    #ROI = frame[0:1000,0:1000]
-
-    if check == True :
-        
-        cv2.imwrite(img_name,frame)
-    else :
-        print("Error during the webcam opening")
-
-    cam.release()
-    return check
-
-def loadImages(check,img_name):
-    if check:
-        mapImg = cv2.imread(img_name, cv2.IMREAD_COLOR)
-        mapBw = cv2.imread(img_name, cv2.IMREAD_GRAYSCALE)
-        eq = cv2.equalizeHist(mapBw)
-        clahe = cv2.createCLAHE(clipLimit=0.5, tileGridSize=(8,8))
-        eq = clahe.apply(mapBw)
-        
-        return mapImg, mapBw, eq
-
-def globalFilter(eq):
-    # Pre-processing the image through filtering and thresholding
-    bilateral = cv2.bilateralFilter(eq,1,200,200)
-    thresh = cv2.threshold(bilateral, 90, 255, cv2.THRESH_BINARY_INV)[1]
-
-    # Applying morphological operators to the image
-    kernelSquare13 = np.ones((13,13),np.float32)
-    opened = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernelSquare13)
-    
-    return bilateral, thresh, opened
 
 def sobelFilter(img, k):
     filtered_img = cv2.bilateralFilter(img,3,75,75)
@@ -149,58 +80,6 @@ def mapTransform(img,YELLOW_L, YELLOW_H):
 	rescaled = dst[0:height, 0:width]
 	return rescaled, M, width, height
 
-def findCorner(img, THRESH):
-	# A modifier en utilisant filtre
-	tmp = np.copy(img)
-	tmp[tmp < THRESH] = 0
-	tmp[tmp > THRESH] = 1
-	#tmp[:50,:] = 0 # not needed if pic good
-	rowN,colN = tmp.shape
-	idx = np.where(tmp==1)
-	corner_top_left = np.array([idx[1][0], idx[0][0]])
-	corner_bottom_right = np.array([idx[1][-1], idx[0][-1]])
-
-	done = False
-	for j in range(0, m.floor(colN / 2)):  # iterating over columns
-		for i in range(0, rowN):           # iterating over lines
-			if tmp.item(i, j) == 1:
-				corner_bottom_left = np.array([j, i])
-				done = True
-				break
-	    # Exiting two for loops
-		if done:
-			break
-	done = False
-	for j in range(colN, m.floor(colN / 2), -1):  # iterating backwards over columns
-		for i in range(0, m.floor(rowN/16)):  # iterating over rows !!!!!!! à changer
-			if tmp.item(i, j - 1) == 1:
-				corner_top_right = np.array([j - 1, i])
-				done = True
-				break
-	    # Exiting two for loops, cf.: [SO2]
-		if done:
-			break
-	pts1 = np.float32([corner_top_left, corner_top_right, corner_bottom_left, corner_bottom_right])
-	return pts1
-
-def rectify_map(img, pts1):
-	# Target Points
-	t1 = pts1[0][0]
-	t2 = pts1[0][1]
-	r1 = pts1[1][0]
-	r2 = pts1[1][1]
-	b1 = pts1[3][0]
-	b2 = pts1[3][1]
-	width = m.floor(m.sqrt((r1 - t1) ** 2 + (r2 - t2) ** 2))
-	height = m.floor(m.sqrt((b1 - r1) ** 2 + (b2 - r2) ** 2))
-	pts2 = np.float32([[0, 0], [width, 0], [0, height], [width, height]])
-	M = cv2.getPerspectiveTransform(pts1, pts2)
-	dst = cv2.warpPerspective(img, M, (width, height))
-
-	## 3. Rescaling image (between width and height)
-	rescaled = dst[0:height, 0:width]
-
-	return rescaled 
 
 def rescale_borders(img,mW,tW):
 	# Conversion pixel to mm
@@ -282,7 +161,7 @@ def findObst(img,lower_range,upper_range,TRESH_L,TRESH_H):
 			e1 = cnt[(j-1)%cnt.shape[0]]-corner
 			e2 = cnt[(j+1)%cnt.shape[0]]-corner
 			bisector = (e1 / np.linalg.norm(e1) + e2 / np.linalg.norm(e2))
-			exp_cnt[i][j] = corner - (half_thymio_pix + 15) * bisector / np.linalg.norm(bisector)
+			exp_cnt[i][j] = corner - (half_thymio_pix + 20) * bisector / np.linalg.norm(bisector)
 
 	exp_img = cv2.drawContours(binary_img.copy(), exp_cnt, -1, 255, thickness=cv2.FILLED)
 
