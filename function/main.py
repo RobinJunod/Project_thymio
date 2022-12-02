@@ -1,34 +1,4 @@
 
-
-# check_prox_sensor thread
-def check_prox_sensor(thymio):
-    """This poart focus on the obstacle detection. This thread is the most prioritised one.
-    
-
-    Args:
-        thymio (_type_): _description_
-    """
-    global PROXIMITY_SENSOR
-    #print("\nHello check_sensor")
-    #threading.Thread( target=check_prox_sensor, args=(thymio, )).start()
-    threading.Timer(0.5, check_prox_sensor, args = (thymio)).start()
-    prox_sens_values = thymio.get_sensor_values()
-    
-    # Stop obstacle condition
-    if sum(prox_sens_values[:5]) > 10:
-        thymio.set_speed([0,0])
-    
-    # update PROXIMITY_SENSOR
-    PROXIMITY_SENSOR = prox_sens_values
-
-
-
-#%% &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-# &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-# &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-# &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-# &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
 """
 TRY A NEW TECHNIQUE FOR THE ROBOT SPPED AQUISITION
 """
@@ -59,8 +29,6 @@ import MotionControl
                                              __/ |
                                             |___/ 
 """
-
-
 lock_ODOMETRY = threading.Lock()
 ODOMETRY = [0,0,0, time.time(), 0]
 def thread_update_odometry():
@@ -128,6 +96,8 @@ def thread_get_sensor():
 Thread_sensor = threading.Thread(target=thread_get_sensor,)
 
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+
 def set_speed(left, right):
     """
     small function to be used with node.send_set_variables()
