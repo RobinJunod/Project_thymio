@@ -52,8 +52,15 @@ class MotionControl:
 
         # function to get the angle without /0 problem, and good computation speed
         self.goal_angle = math.atan2(y_,x_)
-        
+        # compute error angle
         self.angle_error = self.goal_angle - self.thymio_angle
+        
+        # put error angle btwn -pi and pi
+        if self.angle_error > 3.1415:
+            self.angle_error = self.angle_error - 6.283
+        elif self.angle_error < - 3.1415:
+            self.angle_error = self.angle_error + 6.283
+            
         
 
     def PID(self, d_time, ref_speed_l, ref_speed_r):
@@ -83,7 +90,7 @@ class MotionControl:
         self.pre_angle_error = self.angle_error
 
         # Wheel speed
-        return [ref_speed_l + self.u_t, ref_speed_r - self.u_t]
+        return [int(ref_speed_l + self.u_t), int(ref_speed_r - self.u_t)]
 
     
     def plant(self,  speed_l, speed_r, pre_pos_x, pre_pos_y, pre_angle, d_time):
@@ -129,12 +136,12 @@ if __name__=='__main__':
     # initatte robot and goal
     init_goal_pos = [1000, 1000]
     init_robot_speed = [100,100]
-    init_robot_angle = -2
+    init_robot_angle = -4
     init_robot_pos = [0,0]
     
     goal_pos = [1000, 1000]
     robot_speed = [100,100]
-    robot_angle = -2
+    robot_angle = -4
     robot_pos = [0,0]
     
     d_time = 1
@@ -142,7 +149,7 @@ if __name__=='__main__':
     
     # Create PID controller
     PID = MotionControl()
-    PID.update_angle_error(robot_angle, robot_pos, goal_pos)
+    PID.update_angle_error(init_robot_angle, init_robot_pos, init_goal_pos)
     # loop
     loop = 0
     while True:

@@ -35,34 +35,66 @@ class thymio:
         self.client = ClientAsync()
         self.client.process_waiting_messages()
         self.node = aw(self.client.wait_for_node())
-        
-    
-    def set_speed(self, speed_robot):
         aw(self.node.lock())
+    
+    async def set_speed(self, speed_robot):
+        #def motors(speed_robot):
+        #    return {
+        #        "motor.left.target": [speed_robot[0]],
+        #        "motor.right.target": [speed_robot[1]],
+        #    }
+        #self.node.send_set_variables(motors(speed_robot))
+        #await self.node.lock()
         v = {
             "motor.left.target":  [speed_robot[0]],
             "motor.right.target": [speed_robot[1]],
         }
-        aw(self.node.set_variables(v))
-        aw(self.node.unlock())
+        await self.node.set_variables(v)
+        #await self.node.unlock()
         
-    def get_speed(self):
-        aw(self.node.lock())
+        
+    async def get_speed(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        
+        #aw(self.node.lock())
         aw(self.node.wait_for_variables({"motor.right.speed"}))
         right_speed = self.node['motor.right.speed']
         left_speed = self.node['motor.left.speed']
-        aw(self.node.unlock())
+        #aw(self.node.unlock())
+        
         return [left_speed, right_speed]
     
-    def get_sensor_values(self):
+    async def get_sensor_values(self):
         """
         Print the sensor value sensor_id print_range times, every delta_time seconds
         """
+        
         aw(self.node.lock())
         aw(self.node.wait_for_variables({"prox.horizontal"})) 
         prox_sens_values = list(self.node["prox.horizontal"])
         aw(self.node.unlock())
+        
         return prox_sens_values
+    
+    
+    def get_values(self):
+        """get all values
+
+        Returns:
+            _type_: _description_
+        """
+        aw(self.node.lock())
+        aw(self.node.wait_for_variables()) 
+        right_speed = self.node['motor.right.speed']
+        left_speed = self.node['motor.left.speed']
+        prox_sens_values = list(self.node["prox.horizontal"])
+        prox_sens_values = prox_sens_values[:5]
+        aw(self.node.unlock())
+        return left_speed, right_speed, prox_sens_values
     
 
 if __name__=='__main__':
