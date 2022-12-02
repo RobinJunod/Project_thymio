@@ -4,7 +4,7 @@ import math as m
 import time
 
 # CONSTANT INIT
-CAMERA = 2
+
 k_sobel = 5
 
 MAP_WIDTH = 1070 # mm
@@ -21,6 +21,7 @@ BLUE_H = np.array([156, 255, 255],np.uint8)
 
 YELLOW_L = np.array([0, 0, 158],np.uint8)
 YELLOW_H = np.array([179, 240, 255],np.uint8)
+
 
 half_thymio_pix = 38
 
