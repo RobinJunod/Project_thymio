@@ -12,35 +12,13 @@ from threading import Timer
 import time
 
 from tdmclient import ClientAsync, aw
-#client = ClientAsync()
-#node = aw(client.wait_for_node())
-#aw(node.lock()) 
+client = ClientAsync()
+node = aw(client.wait_for_node())
+aw(node.lock()) 
 
 import MotionControl
 
-# &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-"""
-CREATE THE THYMIO CLASS THAT WILL BE USED IN THREADS, IN ORDER NOT TO HAVE A 
-GLOBAL VARIABLE NODE
-"""
-class thymio():
-    def __init__(self) -> None:
-        self.client = ClientAsync()
-        self.node = aw(self.client.wait_for_node())
-        aw(self.node.lock()) 
-        #aw(self.node.wait_for_variables())
-        
-    def set_speed(self, left_speed, right_speed) -> None:
-        self.node.send_set_variables(set_speed(left_speed, right_speed))
-    
-    def get_speed(self) -> tuple:
-        return [self.node["motor.left.speed"], self.node["motor.right.speed"]]
-    
-    def get_sensor(self) -> list:
-        return list(self.node["prox.horizontal"])
-# CREATE THE THYMIO object
 
-thymio = thymio()
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 """         _                           _         
            | |                         | |        
@@ -53,7 +31,7 @@ thymio = thymio()
 """
 lock_ODOMETRY = threading.Lock()
 ODOMETRY = [0,0,0, time.time(), 0]
-def thread_update_odometry(thymio):
+def thread_update_odometry():
     """                                    
     This thread is executed in continus and is there to update the global variable ODOMERTY
     Args:
@@ -62,11 +40,9 @@ def thread_update_odometry(thymio):
     # take glabal variable
     global ODOMETRY
     while 1:
-        
-        #speed_l = node["motor.left.speed"]
-        #speed_r = node["motor.right.speed"]
-        speed_l = thymio.get_speed()[0]
-        speed_r = thymio.get_speed()[1]
+        speed_l = node["motor.left.speed"]
+        speed_r = node["motor.right.speed"]
+        #[speed_l, speed_r] = thymio.get_speed()
         # convert speed in mm/s
         speed_l = speed_l * 0.3175373
         speed_r = speed_r * 0.3175373
@@ -91,7 +67,7 @@ def thread_update_odometry(thymio):
         lock_ODOMETRY.release()
         time.sleep(0.1)
         
-Thread_odomerty = threading.Thread(target=thread_update_odometry, args=(thymio,))
+Thread_odomerty = threading.Thread(target=thread_update_odometry,)
 
 
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&                          
@@ -104,11 +80,10 @@ Thread_odomerty = threading.Thread(target=thread_update_odometry, args=(thymio,)
                                 
 lock_PROX_SENSOR = threading.Lock()
 PROX_SENSOR = [0, 0, 0, 0, 0, 0, 0]
-def thread_get_sensor(thymio):
+def thread_get_sensor():
     global PROX_SENSOR
     while 1:
-        #prox_sens_values = list(node["prox.horizontal"])
-        prox_sens_values = thymio.get_sensor()
+        prox_sens_values = list(node["prox.horizontal"])
         # Stop obstacle condtion
         if sum(prox_sens_values[:5]) > 10:
             pass
@@ -118,11 +93,11 @@ def thread_get_sensor(thymio):
         lock_PROX_SENSOR.release()
         time.sleep(0.1)
 
-Thread_sensor = threading.Thread(target=thread_get_sensor, args=(thymio,))
+Thread_sensor = threading.Thread(target=thread_get_sensor,)
 
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
-# OLD FUNCTIONS
+
 def set_speed(left, right):
     """
     small function to be used with node.send_set_variables()
@@ -157,12 +132,14 @@ def get_data():
 
 # Main Thread
 if __name__ == '__main__':
-    #aw(node.wait_for_variables()) # wait for Thymio variables values
-    aw(thymio.node.wait_for_variables())
+    aw(node.wait_for_variables()) # wait for Thymio variables values
+    #threading.Thread(target=get_data,).start()
+    #threading.Thread(target=update_odometry,).start()
     
     # Start Threads
     Thread_odomerty.start()
     Thread_sensor.start()
+    
     
     #init pid controller
     # TODO : add the computation of the thymio angle and posistion
@@ -185,8 +162,7 @@ if __name__ == '__main__':
     time_last_ctrl = time.time()
     while 1:
         # time.sleep would not work here, use asynchronous client.sleep method instead
-        #aw(client.sleep(1)) 
-        aw(thymio.client.sleep(1))
+        aw(client.sleep(1)) 
         
         # get ODOMETRY values
         # take variables from GV ODOMERTY
@@ -204,8 +180,7 @@ if __name__ == '__main__':
         PID.update_angle_error(thymio_angle, thymio_pos, goal_pos)
         d_time = time.time() - time_last_ctrl
         [left_speed, right_speed] = PID.PID(d_time, 100, 100)
-        #node.send_set_variables(set_speed(left_speed, right_speed))
-        thymio.set_speed(left_speed, right_speed)
+        node.send_set_variables(set_speed(left_speed, right_speed))
         time_last_ctrl = time.time()
         
         # TODO Kalman filter (give a new value to the odomerty)
@@ -220,10 +195,9 @@ if __name__ == '__main__':
                 goal_pos = list(goals_list[n_goal])
             else:
                 # thymio reached destination
-                #node.send_set_variables(set_speed(0, 0))
-                thymio.set_speed(0, 0)
+                node.send_set_variables(set_speed(0, 0))
                 break
 
-#aw(node.unlock())
-aw(thymio.node.unlock())
+aw(node.unlock())
+
 # %%
