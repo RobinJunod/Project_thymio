@@ -11,10 +11,10 @@ import threading
 from threading import Timer
 import time
 
-from tdmclient import ClientAsync
+from tdmclient import ClientAsync, aw
 client = ClientAsync()
-node = await client.wait_for_node()
-await node.lock()
+node = aw(client.wait_for_node())
+aw(node.lock()) 
 
 import MotionControl
 
@@ -117,21 +117,42 @@ def get_data():
     while 1:
         ODOMETRY = [node["motor.left.speed"], node["motor.right.speed"]]
 
+# &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+"""
+                  _         _                   
+                 (_)       | |                  
+  _ __ ___   __ _ _ _ __   | | ___   ___  _ __  
+ | '_ ` _ \ / _` | | '_ \  | |/ _ \ / _ \| '_ \ 
+ | | | | | | (_| | | | | | | | (_) | (_) | |_) |
+ |_| |_| |_|\__,_|_|_| |_| |_|\___/ \___/| .__/ 
+                                         | |    
+                                         |_|    
+"""
+
 # Main Thread
 if __name__ == '__main__':
-    await node.wait_for_variables() # wait for Thymio variables values
+    aw(node.wait_for_variables()) # wait for Thymio variables values
     #threading.Thread(target=get_data,).start()
     #threading.Thread(target=update_odometry,).start()
+    
     # Start Threads
     Thread_odomerty.start()
     Thread_sensor.start()
     
+    
     #init pid controller
+    # TODO : add the computation of the thymio angle and posistion
     lock_ODOMETRY.acquire()
     thymio_angle = ODOMETRY[2]
     thymio_pos = [ODOMETRY[0], ODOMETRY[1]]
     lock_ODOMETRY.release()
-    goal_pos = [1000,1000]
+    
+    # TODO : add the computation of the shortest path here
+    goals_list = [(1000,1000), (2000,1000)]
+    n_goal = 0
+    goal_pos = list(goals_list[n_goal])
+    
     PID = MotionControl.MotionControl()
     PID.update_angle_error(thymio_angle, thymio_pos, goal_pos)
     
@@ -141,7 +162,7 @@ if __name__ == '__main__':
     time_last_ctrl = time.time()
     while 1:
         # time.sleep would not work here, use asynchronous client.sleep method instead
-        await client.sleep(1)
+        aw(client.sleep(1)) 
         
         # get ODOMETRY values
         # take variables from GV ODOMERTY
@@ -162,11 +183,21 @@ if __name__ == '__main__':
         node.send_set_variables(set_speed(left_speed, right_speed))
         time_last_ctrl = time.time()
         
+        # TODO Kalman filter (give a new value to the odomerty)
+        
+        
+        # TODO: reaplce manathan distance by L2 norm
         manathan_dist_to_goal = abs(goal_pos[1]-thymio_pos[1]) + abs(goal_pos[0]-thymio_pos[0])
         if manathan_dist_to_goal < 200:
-            node.send_set_variables(set_speed(0, 0))
-            break
+            # TODO: change goal position arrcording to goal list
+            n_goal += 1
+            if n_goal < len(goals_list):
+                goal_pos = list(goals_list[n_goal])
+            else:
+                # thymio reached destination
+                node.send_set_variables(set_speed(0, 0))
+                break
 
-await node.unlock()
+aw(node.unlock())
 
 # %%
