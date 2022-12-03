@@ -32,8 +32,12 @@ def visuDuringRun(rescMap, POS_VISIONX, POS_VISIONY, obst_coords, newANGLE, ANGL
         pts = obst
         pts = pts.reshape((-1,1,2))
         image = cv2.polylines(image,[pts.astype(np.int32)],True,(255,0,0))
-    image = cv2.line(image,(x_t,y_t),(x_t+30,math.floor(y_t-30*np.tan(ANGLE_VISION))),(0,0,0),5)
-    image = cv2.line(image,(x_t,y_t),(x_t+30,math.floor(y_t-30*np.tan(newANGLE))),(0,0,255),5)
+    if abs(ANGLE_VISION) > np.pi/2:
+        image = cv2.line(image,(x_t,y_t),(x_t-30,math.floor(y_t-30*math.tan(ANGLE_VISION))),(0,0,0),5)
+        image = cv2.line(image,(x_t,y_t),(x_t-30,math.floor(y_t-30*math.tan(newANGLE))),(0,0,255),5)
+    else:    
+        image = cv2.line(image,(x_t,y_t),(x_t+30,math.floor(y_t-30*math.tan(ANGLE_VISION))),(0,0,0),5)
+        image = cv2.line(image,(x_t,y_t),(x_t+30,math.floor(y_t-30*math.tan(newANGLE))),(0,0,255),5)
     image = cv2.circle(image, (x_t,y_t), 30, (0,255,0), 2)
     image = cv2.polylines(image, np.int32([np.array(shortestpath).reshape((-1, 1, 2))]), False, (200, 0, 255), 3)
     cv2.imshow("Display window", image)

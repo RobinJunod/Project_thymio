@@ -121,17 +121,11 @@ def findThymio(img, lower_range, upper_range, k_small, k_big, THRESH):
 	pos = [posX,posY]
 	dx = CR[0]-BR[0]
 	dy = -(CR[1]-BR[1])
-
-	if (dx == 0) and (dy > 0):
-		angle = np.pi / 2
-	elif (dx == 0) and (dy < 0):
-		angle = -np.pi / 2
-	elif dx > 0:
-		angle = np.arctan(dy/dx)
-	else:
-		angle = np.pi+np.arctan(dy/dx)
+	
+	angle = m.atan2(dy,dx)
+	
 	return pos, angle
-
+	
 def findGoal(img,lower_range,upper_range,TRESH_L,TRESH_H):
 	hsv, mask, filt_img = colorFilter(img,lower_range,upper_range)
 	goal_gray = cv2.cvtColor(filt_img, cv2.COLOR_BGR2GRAY)

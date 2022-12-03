@@ -14,7 +14,6 @@ from threading import Timer
 #import Thymio
 import MotionControl
 import vision
-import setThymioSpeed
 import filtering
 import Global_Navigation
 import visualisation
@@ -158,7 +157,7 @@ if __name__ == '__main__':
         mapSize = [MAPwidth, MAPheight]
         globNav = Global_Navigation.Global_Navigation(obst_coords,POS_VISION,goal_coords,mapSize)        
         shortestpath=globNav.create_path()
-        print(shortestpath)
+        
         ##############################################################################################
 
         ##### VISUALIZATION #########################################################################
@@ -171,7 +170,7 @@ if __name__ == '__main__':
         Thread_odomerty.start()
         Thread_sensor.start()
         
-        ODOMETRY = [POS_VISION[0], POS_VISION[1], ANGLE_VISION, time.time(), 0.1]
+        ODOMETRY = [POS_VISION[0], POS_VISION[1], ANGLE_VISION, time.time(), 0]
         #init pid controller
         lock_ODOMETRY.acquire()
         thymio_angle = ODOMETRY[2]
@@ -182,21 +181,18 @@ if __name__ == '__main__':
         ind_next =1 # Init index for next goal on shortestpath
         goal_pos = shortestpath[ind_next]
         PID = MotionControl.MotionControl()
-        PID.update_angle_error(thymio_angle, thymio_pos, goal_pos)
-        time_last_ctrl = time.time()
 
         print("Let's go")
 
         # Entering main loop (while thymio not in goal region)
-        while D1 > 15 or D2 > 15:
+        while 1:
             # PID controller
             PID.update_angle_error(thymio_angle, thymio_pos, goal_pos)
-            d_time = time.time() - time_last_ctrl
+            d_time = ODOMETRY[4]
             [left_speed, right_speed] = PID.PID(d_time, 100, 100)
-            node.send_set_variables(set_speed(left_speed, right_speed))
-            time_last_ctrl = time.time()
+            node.send_set_variables(set_speed(math.floor(left_speed), math.floor(right_speed)))
             # time.sleep would not work here, use asynchronous client.sleep method instead
-            await client.sleep(1)
+            await client.sleep(0.5)
             # get ODOMETRY values
             # take variables from GV ODOMERTY
             lock_ODOMETRY.acquire()
@@ -209,28 +205,32 @@ if __name__ == '__main__':
             ret, frame = cap.read()
             # Return Thymio coordinates and angle from vision
             rescMap, POS_VISION, ANGLE_VISION = vision.updateThymioPos(frame)
+            if np.isnan(POS_VISION[0]) or np.isnan(POS_VISION[1]):
+                POS_VISION = [ODOMETRY[0], ODOMETRY[1]]
+                print("Position lost")
+            if np.isnan(ANGLE_VISION):
+                ANGLE_VISION = ODOMETRY[2]
             ##############################################################################################
             ################## FILTERING #################################################################
             ODOMETRY[2], Sigma_angle = filtering.kalmanFilterAngle(ODOMETRY[2], ANGLE_VISION, Sigma_angle)
             ODOMETRY[0], ODOMETRY[1], Sigma_pos = filtering.kalmanFilterPos(ODOMETRY[0], ODOMETRY[1], POS_VISION[0], POS_VISION[1], Sigma_pos)
 
             # check if goal reached
-            if (abs(ODOMETRY[0]-next_point[0]) < 15 and abs(ODOMETRY[1]-next_point[1]) < 15):
-                ind_next += 1
+            if (abs(ODOMETRY[0]-goal_pos[0]) < 15 and abs(ODOMETRY[1]-goal_pos[1]) < 15):
+                if ind_next == len(shortestpath)-1:
+                    node.send_set_variables(set_speed(0, 0))
+                    print("Destination reached ! Thank you for flying with us")
+                    break
+                else:
+                    ind_next += 1
             # update goal point
-            next_point = shortestpath[ind_next]
+            goal_pos = shortestpath[ind_next]
             ###############################################################################################
 
             ##### VISUALIZATION #########
-            visualisation.visuDuringRun(rescMap, POS_VISION[0], POS_VISION[1], obst_coords, ODOMETRY[2], ANGLE_VISION, shortestpath, goal_coords[0], goal_coords[1])
+            visualisation.visuDuringRun(rescMap, ODOMETRY[0], ODOMETRY[1], obst_coords, ODOMETRY[2], ANGLE_VISION, shortestpath, goal_coords[0], goal_coords[1])
             ##### END VISUALIZATION ############
-            # Compute distance to finish line !
-            D1 = abs(POS_VISION[0]-goal_coords[0])
-            D2 = abs(POS_VISION[1]-goal_coords[1])
-            
-            if D1 < 20 and D2 < 20:
-                node.send_set_variables(set_speed(0, 0))
-                break
+                
 
             if cv2.waitKey(1) == 27:
                 break
@@ -239,3 +239,5 @@ if __name__ == '__main__':
     cv2.destroyAllWindows()
     # When everything done, release the video capture object
     cap.release()
+
+# %%

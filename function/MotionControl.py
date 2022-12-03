@@ -70,12 +70,17 @@ class MotionControl:
             float list: motors speed
         """
         # Compute integral and derivative
-        self.PID_integral = self.PID_integral + self.angle_error * d_time
+        if d_time > 0:
+            self.PID_integral = self.PID_integral + self.angle_error * d_time
+
+            self.PID_derivative = (self.angle_error - self.pre_angle_error)/d_time
+        else:
+            self.PID_integral = 0
+
+            self.PID_derivative = 0
+
 
         self.PID_proportional = self.angle_error
-        
-        self.PID_derivative = (self.angle_error - self.pre_angle_error)/d_time
-        
         
         self.u_t = self.Kp*self.PID_proportional + self.Ki*self.PID_integral + self.Kd*self.PID_derivative
 

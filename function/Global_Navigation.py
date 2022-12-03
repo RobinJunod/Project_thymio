@@ -98,7 +98,7 @@ class Global_Navigation:
         nodes_close_edges=[]
         for obstacle in all_obstacles:
             for node in obstacle:
-                if (node[0]< 38) or (node[0]> self.max_valx-38) or (node[1]<38) or (node[1]>self.max_valy-38):
+                if (node[0]<= 38) or (node[0]>= self.max_valx-38) or (node[1]<=38) or (node[1]>=self.max_valy-38):
                     nodes_close_edges.append(node)
 
         for i in range(len(all_nodes)): 
