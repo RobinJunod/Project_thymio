@@ -193,16 +193,14 @@ def map_init(img):
     t_init = end_init-start_init
     return rescMap, M, width, height, b_coords, goal_coords, obst_coords, t_coords, t_angle
 
-def updateThymioPos(img):
+def updateThymioPos(img, M, width, height):
     start_update = time.time()
     #### Map rescaling and rectifying
-    recMap, M, width, height = mapTransform(img,YELLOW_L, YELLOW_H)
-    rescMap, b_coords = rescale_borders(recMap,MAP_WIDTH,THYMIO_WIDTH)
-    """
+    #recMap, M, width, height = mapTransform(img,YELLOW_L, YELLOW_H)
+    #rescMap, b_coords = rescale_borders(recMap,MAP_WIDTH,THYMIO_WIDTH)
     dst = cv2.warpPerspective(img, M, (width, height))
     recMap = dst[0:height, 0:width]
-    rescMap, b_coords = vision.rescale_borders(recMap,MAP_WIDTH,THYMIO_WIDTH)
-    """
+    rescMap, b_coords = rescale_borders(recMap,MAP_WIDTH,THYMIO_WIDTH)
     ### Find Thymio
     t_coords, t_angle = findThymio(rescMap, GREEN_L, GREEN_H,3,17,20)
     
