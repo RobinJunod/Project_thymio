@@ -123,7 +123,22 @@ def findThymio(img, lower_range, upper_range, k_small, k_big, THRESH):
 	dy = -(CR[1]-BR[1])
 	
 	angle = m.atan2(dy,dx)
-	
+
+
+	"""
+	if (dx == 0) and (dy > 0):
+		angle = np.pi / 2
+	elif (dx == 0) and (dy < 0):
+		angle = -np.pi / 2
+	elif dy > 0 and dx > 0:
+		angle = np.arctan(dy/dx)
+	elif dy > 0 and dx <0:
+		angle = np.arctan(dy/dx) + np.pi /2
+	elif dy < 0 and dx > 0:
+		angle = 2*np.pi + np.arctan(dy/dx)
+	else:
+		angle = (3/2)*np.pi + np.arctan(dy/dx)
+	"""
 	return pos, angle
 	
 def findGoal(img,lower_range,upper_range,TRESH_L,TRESH_H):

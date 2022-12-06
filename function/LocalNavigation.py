@@ -7,7 +7,7 @@ class LocalNavigation:
     def _init_(self, proximity_sensors):
         self.prox_horizontal = proximity_sensors[0:4] 
 
-    def detect_obstacle(self, proximity_sensors, threshold=300):  
+    def detect_obstacle(self, proximity_sensors, threshold=100):  
         self.prox_horizontal = proximity_sensors[0:4] 
         maxvalue = max(self.prox_horizontal)
         if(maxvalue > threshold) : 
@@ -23,7 +23,7 @@ class LocalNavigation:
         w_r = [-20, -30, 30,  30,  20]
 
         # Scale factors for sensors 
-        sensor_scale = 200
+        sensor_scale = 400
     
         y = [0,0]
         x = [0,0,0,0,0]
@@ -46,11 +46,15 @@ class LocalNavigation:
 
         return [motor_left_target,motor_right_target]
 
-    def go_straight(self) :
-        NOMINAL_SPEED = 100
-        motor_left_target = NOMINAL_SPEED
-        motor_right_target = NOMINAL_SPEED
+    def go_straight(self, speeds) :
+        NOMINAL_SPEED = 160
+        DELTA_SPEED = 60
+        if(speeds[0]<speeds[1]) :
+            motor_left_target = NOMINAL_SPEED
+            motor_right_target = NOMINAL_SPEED - DELTA_SPEED
+        else :
+            motor_left_target = NOMINAL_SPEED - DELTA_SPEED
+            motor_right_target = NOMINAL_SPEED
+
 
         return [motor_left_target,motor_right_target]
-        #self.set_speed([motor_left_target,motor_right_target])
-        #time.sleep(0.5)

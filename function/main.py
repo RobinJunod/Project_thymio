@@ -25,7 +25,7 @@ from tdmclient import ClientAsync, aw
 
 ########################### SET GLOBAL VARIABLES ################################
 # Golbal variables (varaibles that must be shared btwn threads)
-global PROX_SENSOR, ODOMETRY
+global PROX_SENSOR, ODOMETRY, OBSTACLE
 
 # Global constants
 THYMIO_RADIUS = 47 # in [mm]
@@ -117,9 +117,11 @@ Thread_odometry = threading.Thread(target=thread_update_odometry,)
 """                     
                                 
 lock_PROX_SENSOR = threading.Lock()
+lock_OBSTACLE = threading.Lock()
 PROX_SENSOR = [0, 0, 0, 0, 0, 0, 0]
+OBSTACLE = False
 def thread_get_sensor():
-    global PROX_SENSOR
+    global PROX_SENSOR, OBSTACLE
     while 1:
         prox_sens_values = thymio.get_sensor()
         
@@ -127,10 +129,27 @@ def thread_get_sensor():
         lock_PROX_SENSOR.acquire()
         PROX_SENSOR = prox_sens_values
         lock_PROX_SENSOR.release()
+
+        
+        if(locNav.detect_obstacle(PROX_SENSOR)) :           
+            bool_obstacle = True
+        else :
+            bool_obstacle = False
+
+        lock_OBSTACLE.acquire()
+        OBSTACLE = bool_obstacle
+        lock_OBSTACLE.release()
         
         time.sleep(0.1)
 
 Thread_sensor = threading.Thread(target=thread_get_sensor,)
+
+
+
+
+
+
+
 
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
@@ -176,7 +195,7 @@ if __name__ == '__main__':
 
     # Need this loop to work
     while(cap.isOpened()):
-        ########## Take first picture for init and initialize MAP ###################################
+    ########## Take first picture for init and initialize MAP ###################################
         for i in range(1,20):
             ret, frame = cap.read()
             i +=1
@@ -191,19 +210,18 @@ if __name__ == '__main__':
         # Initialize MAP
         rescMap, M, MAPwidth, MAPheight, b_coords, goal_coords, obst_coords, POS_VISION, ANGLE_VISION = vision.map_init(frame)
         ##############################################################################################
-
         ############ Path planning ###################################################################
         mapSize = [MAPwidth, MAPheight]
         globNav = Global_Navigation.Global_Navigation(obst_coords,POS_VISION,goal_coords,mapSize)        
         shortestpath=globNav.create_path()
-        
+            
         ##############################################################################################
 
         ##### VISUALIZATION #########################################################################
         visualisation.visualisation(rescMap, POS_VISION[0], POS_VISION[1], obst_coords, ANGLE_VISION, shortestpath, goal_coords[0], goal_coords[1])
         cv2.waitKey(0)
         ##### END VISUALIZATION #####################################################################
-        
+            
         # Init threads and Thymio
         aw(thymio.node.wait_for_variables()) # wait for Thymio variables values
 
@@ -212,6 +230,7 @@ if __name__ == '__main__':
         # Start Threads
         Thread_odometry.start()
         Thread_sensor.start()
+
         #init pid controller and variable for motion control and filtering
         #thymio_angle = ODOMETRY[2]
         #thymio_pos = [ODOMETRY[0], ODOMETRY[1]]
@@ -230,67 +249,76 @@ if __name__ == '__main__':
         time_last_ctrl = time.time()
         #&&&&&&&&&&&&&&&&&&&&&&& main loop (while thymio not in goal region) &&&&&&&&&&&&&&&&&&&&&&&&&&&&&
         while 1:
-            # time.sleep would not work here, use asynchronous client.sleep method instead
-            aw(thymio.client.sleep(0.1))
+            if(OBSTACLE == False) :
+                # time.sleep would not work here, use asynchronous client.sleep method instead
+                aw(thymio.client.sleep(0.1))
 
-            ########### Update Thymio Position and Angle ##################################################
-            #lock_ODOMETRY.acquire()
-            #thymio_angle = ODOMETRY[2]
-            #thymio_pos = [ODOMETRY[0], ODOMETRY[1]]
-            #lock_ODOMETRY.release()
-            ### Via vision
-            # Capture new frame
-            ret, frame = cap.read()
-            # Return Thymio coordinates and angle from vision
-            rescMap, POS_VISION, ANGLE_VISION = vision.updateThymioPos(frame, M, MAPwidth, MAPheight)
-            if np.isnan(POS_VISION[0]) or np.isnan(POS_VISION[1]):
-                POS_VISION = [ODOMETRY[0], ODOMETRY[1]]
-                print("Position lost")
-            if np.isnan(ANGLE_VISION):
-                ANGLE_VISION = ODOMETRY[2]
-            ##############################################################################################
-            ################## FILTERING #################################################################
-            ODOMETRY[2], Sigma_angle = filtering.kalmanFilterAngle(ODOMETRY[2], ANGLE_VISION, Sigma_angle)
-            ODOMETRY[0], ODOMETRY[1], Sigma_pos = filtering.kalmanFilterPos(ODOMETRY[0], ODOMETRY[1], POS_VISION[0], POS_VISION[1], Sigma_pos)
+                ########### Update Thymio Position and Angle ##################################################
+                #lock_ODOMETRY.acquire()
+                #thymio_angle = ODOMETRY[2]
+                #thymio_pos = [ODOMETRY[0], ODOMETRY[1]]
+                #lock_ODOMETRY.release()
+                ### Via vision
+                # Capture new frame
+                ret, frame = cap.read()
+                # Return Thymio coordinates and angle from vision
+                rescMap, POS_VISION, ANGLE_VISION = vision.updateThymioPos(frame, M, MAPwidth, MAPheight)
+                if np.isnan(POS_VISION[0]) or np.isnan(POS_VISION[1]):
+                    POS_VISION = [ODOMETRY[0], ODOMETRY[1]]
+                    print("Position lost")
+                if np.isnan(ANGLE_VISION):
+                    ANGLE_VISION = ODOMETRY[2]
+                ##############################################################################################
+                ################## FILTERING #################################################################
+                ODOMETRY[2], Sigma_angle = filtering.kalmanFilterAngle(ODOMETRY[2], ANGLE_VISION, Sigma_angle)
+                ODOMETRY[0], ODOMETRY[1], Sigma_pos = filtering.kalmanFilterPos(ODOMETRY[0], ODOMETRY[1], POS_VISION[0], POS_VISION[1], Sigma_pos)
 
-            # check if goal reached
-            if (abs(ODOMETRY[0]-goal_pos[0]) < 15 and abs(ODOMETRY[1]-goal_pos[1]) < 15):
-                if ind_next == len(shortestpath)-1:
-                    thymio.set_speed(0, 0)
-                    print("Destination reached ! Thank you for flying with us")
-                    break
-                else:
-                    ind_next += 1
-            # update goal point
-            goal_pos = shortestpath[ind_next]
+                # check if goal reached
+                if (abs(ODOMETRY[0]-goal_pos[0]) < 15 and abs(ODOMETRY[1]-goal_pos[1]) < 15):
+                    if ind_next == len(shortestpath)-1:
+                        thymio.set_speed(0, 0)
+                        print("Destination reached ! Thank you for flying with us")
+                        break
+                    else:
+                        ind_next += 1
+                # update goal point
+                goal_pos = shortestpath[ind_next]
 
-            # PID controller
-            PID.update_angle_error(ODOMETRY[2], [ODOMETRY[0], ODOMETRY[1]], goal_pos)
-            d_time = time.time() - time_last_ctrl
-            [left_speed, right_speed] = PID.PID(d_time, 100, 100)
-            thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
-            time_last_ctrl = time.time()
-            ###############################################################################################
-            #lock_PROX_SENSOR.acquire()
-            #print(PROX_SENSOR)
-            #lock_PROX_SENSOR.release()
-            # Stop obstacle condtion
-            if(locNav.detect_obstacle(PROX_SENSOR)) :
-                left_speed, right_speed = locNav.turn_if_obstacle(PROX_SENSOR)
+                # PID controller
+                PID.update_angle_error(ODOMETRY[2], [ODOMETRY[0], ODOMETRY[1]], goal_pos)
+                d_time = time.time() - time_last_ctrl
+                [left_speed, right_speed] = PID.PID(d_time, 100, 100)
                 thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
-                time.sleep(0.3)
-                left_speed, right_speed = locNav.go_straight()
-                thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
-                time.sleep(1.2)
-            ##### VISUALIZATION #########
-            visualisation.visuDuringRun(rescMap, ODOMETRY[0], ODOMETRY[1], obst_coords, ODOMETRY[2], ANGLE_VISION, shortestpath, goal_coords[0], goal_coords[1])
-            ##### END VISUALIZATION ############
-                
+                time_last_ctrl = time.time()
+                ###############################################################################################
+                #lock_PROX_SENSOR.acquire()
+                #print(PROX_SENSOR)
+                #lock_PROX_SENSOR.release()
+                # Stop obstacle condtion
+                """if(locNav.detect_obstacle(PROX_SENSOR)) :
+                    left_speed, right_speed = locNav.turn_if_obstacle(PROX_SENSOR)
+                    thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
+                    aw(thymio.client.sleep(1.0))
+                    left_speed, right_speed = locNav.go_straight()
+                    thymio.set_speed(math.floor(left_speed), math.floor(right_speed))"""
+                    
+                ##### VISUALIZATION #########
+                visualisation.visuDuringRun(rescMap, ODOMETRY[0], ODOMETRY[1], obst_coords, ODOMETRY[2], ANGLE_VISION, shortestpath, goal_coords[0], goal_coords[1])
+                ##### END VISUALIZATION ############
+            else :
+                while(OBSTACLE) :
+                    left_speed, right_speed = locNav.turn_if_obstacle(PROX_SENSOR)
+                    thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
+                    aw(thymio.client.sleep(0.1))    
+                left_speed, right_speed = locNav.go_straight([left_speed,right_speed])
+                thymio.set_speed(math.floor(left_speed), math.floor(right_speed))   
+                aw(thymio.client.sleep(2.0))     
 
             if cv2.waitKey(1) == 27:
                 break
         break
-
+        
+    thymio.set_speed(0, 0)
     cv2.destroyAllWindows()
     # When everything done, release the video capture object
     cap.release()

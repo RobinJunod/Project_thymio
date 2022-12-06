@@ -52,10 +52,14 @@ class MotionControl:
 
         # function to get the angle without /0 problem, and good computation speed
         self.goal_angle = math.atan2(y_,x_)
-        
+                    
         self.angle_error = self.goal_angle - self.thymio_angle
+        if self.angle_error > np.pi :
+            self.angle_eror = 2*np.pi - self.angle_error
+        elif self.angle_error < -np.pi:
+            self.angle_error = self.angle_error + 2*np.pi
         
-
+        
     def PID(self, d_time, ref_speed_l, ref_speed_r):
         """PID implementation. We 
 
