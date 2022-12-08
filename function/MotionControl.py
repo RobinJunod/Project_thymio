@@ -4,7 +4,7 @@ import math
 import matplotlib.pyplot as plt
 
 class MotionControl:
-    def __init__(self, Kp=70, Ki=2, Kd=0.5):
+    def __init__(self, Kp=70, Ki=2, Kd=1):
         """Make a PID controller with the error being the angle error btwn thymio angle and thymio to objective angle
 
         Args:

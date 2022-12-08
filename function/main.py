@@ -16,10 +16,26 @@ from tdmclient import ClientAsync, aw
 #node = aw(client.wait_for_node())
 #aw(node.lock()) 
 
+# Created files
 import MotionControl
+import vision
+import filtering
+import Global_Navigation
+import LocalNavigation
+import visualisation
+
+
 
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 """
+  _   _                     _       
+ | | | |                   (_)      
+ | |_| |__  _   _ _ __ ___  _  ___  
+ | __| '_ \| | | | '_ ` _ \| |/ _ \ 
+ | |_| | | | |_| | | | | | | | (_) |
+  \__|_| |_|\__, |_| |_| |_|_|\___/ 
+             __/ |                  
+            |___/    
 CREATE THE THYMIO CLASS THAT WILL BE USED IN THREADS, IN ORDER NOT TO HAVE A 
 GLOBAL VARIABLE NODE
 """
@@ -38,7 +54,6 @@ class thymio():
     
     def get_sensor(self) -> list:
         return list(self.node["prox.horizontal"])
-# CREATE THE THYMIO object
 
 thymio = thymio()
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -160,6 +175,9 @@ if __name__ == '__main__':
     #aw(node.wait_for_variables()) # wait for Thymio variables values
     aw(thymio.node.wait_for_variables())
     
+    # create local navigation object
+    locNav = LocalNavigation.LocalNavigation()
+    
     # Start Threads
     Thread_odomerty.start()
     Thread_sensor.start()
@@ -208,9 +226,19 @@ if __name__ == '__main__':
         thymio.set_speed(left_speed, right_speed)
         time_last_ctrl = time.time()
         
-        # TODO Kalman filter (give a new value to the odomerty)
+        # TODO Kalman filter (give a new value to ODOMETRY global variable)
+        # always use the lock_ODOMERTRY.aquire()/realease() to modify ODOMETRY
         
-        
+        # TODO: implement local avoidance
+        lock_PROX_SENSOR.acquire()
+        if(locNav.detect_obstacle(PROX_SENSOR)):
+                left_speed, right_speed = locNav.turn_if_obstacle(PROX_SENSOR)
+                thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
+                aw(thymio.client.sleep(0.3))
+                left_speed, right_speed = locNav.go_straight()
+                thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
+                aw(thymio.client.sleep(1.2))
+        lock_PROX_SENSOR.release() 
         # TODO: reaplce manathan distance by L2 norm
         manathan_dist_to_goal = abs(goal_pos[1]-thymio_pos[1]) + abs(goal_pos[0]-thymio_pos[0])
         if manathan_dist_to_goal < 200:
