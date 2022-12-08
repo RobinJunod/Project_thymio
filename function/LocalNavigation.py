@@ -1,6 +1,3 @@
-import numpy as np
-import math
-import time
 
 
 class LocalNavigation:
@@ -42,8 +39,6 @@ class LocalNavigation:
         motor_left_target = y[0]
         motor_right_target = y[1]
 
-        #self.set_speed([motor_left_target,motor_right_target])
-
         return [motor_left_target,motor_right_target]
 
     def go_straight(self, speeds) :
@@ -55,6 +50,5 @@ class LocalNavigation:
         else :
             motor_left_target = NOMINAL_SPEED - DELTA_SPEED
             motor_right_target = NOMINAL_SPEED
-
 
         return [motor_left_target,motor_right_target]

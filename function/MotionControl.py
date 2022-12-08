@@ -1,7 +1,6 @@
-#%%
 import numpy as np
 import math
-import matplotlib.pyplot as plt
+
 
 class MotionControl:
     def __init__(self, Kp=70, Ki=2, Kd=0.5):
@@ -61,7 +60,7 @@ class MotionControl:
         
         
     def PID(self, d_time, ref_speed_l, ref_speed_r):
-        """PID implementation. We 
+        """PID implementation.
 
         Args:
             d_time (float): time btwn the last and new speed allocation
@@ -129,49 +128,4 @@ class MotionControl:
         # output update ODOMETRY
         return pos_x, pos_y, angle
         
-    
-
-
-if __name__=='__main__':
-    # TODO: an implementation to show the tymio implementation
-    
-    # initatte robot and goal
-    init_goal_pos = [1000, 1000]
-    init_robot_speed = [100,100]
-    init_robot_angle = -2
-    init_robot_pos = [0,0]
-    
-    goal_pos = [1000, 1000]
-    robot_speed = [100,100]
-    robot_angle = -2
-    robot_pos = [0,0]
-    
-    d_time = 1
-    thymio_trajectory = []
-    
-    # Create PID controller
-    PID = MotionControl()
-    PID.update_angle_error(robot_angle, robot_pos, goal_pos)
-    # loop
-    loop = 0
-    while True:
-        loop += 1
-        goal_achieved = False
-        # compute error
-        PID.update_angle_error(robot_angle, robot_pos, goal_pos)
-        # compute PID speed
-        [robot_speed[0], robot_speed[1]] = PID.PID(d_time, 100, 100)
-        # set speed and get new position and angle value
-        [robot_pos[0], robot_pos[1], robot_angle] = PID.plant(robot_speed[0], robot_speed[1], robot_pos[0], robot_pos[1], robot_angle, d_time)
-        thymio_trajectory.append((robot_pos[0], robot_pos[1]))
-        manathan_dist_to_goal = abs(goal_pos[1]-robot_pos[1]) + abs(goal_pos[0]-robot_pos[0])
-        if manathan_dist_to_goal < 200 or loop > 300:
-            break
-    
-    # plot trajectorie
-    plt.scatter(*zip(*thymio_trajectory))
-    plt.plot([0,1000], [0,1000], color = 'red', linestyle = 'solid')
-    plt.plot([0,100*math.cos(init_robot_angle)], [0, 100 * math.sin(init_robot_angle)], color = 'green')
-    plt.title('Thymio PID direction')
-#%%
     

@@ -1,4 +1,3 @@
-#%%
 ################################## IMPORTS #########################################
 # basic computation library
 import cv2
@@ -32,7 +31,7 @@ THYMIO_RADIUS = 47 # in [mm]
 THYMIO_SPEED_CONVERTION = 0.3175373
 MM_TO_PIX_CONVERTION = 438/1070
 
-#############
+# Camera number and bool for thread 
 CAMERA = 2
 
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -69,8 +68,7 @@ locNav = LocalNavigation.LocalNavigation()
                                             |___/ 
 """
 lock_ODOMETRY = threading.Lock()
-#ODOMETRY = [0,0,0, time.time(), 0]
-def thread_update_odometry():
+def thread_update_odometry(event):
     """                                    
     This thread is executed in continus and is there to update the global variable ODOMETRY
     Args:
@@ -103,9 +101,11 @@ def thread_update_odometry():
         lock_ODOMETRY.acquire()
         ODOMETRY = [pos_x, pos_y, angle, previous_time, d_time]
         lock_ODOMETRY.release()
+        if event.is_set():
+            break
         time.sleep(0.1)
         
-Thread_odometry = threading.Thread(target=thread_update_odometry,)
+
 
 
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&                          
@@ -120,7 +120,7 @@ lock_PROX_SENSOR = threading.Lock()
 lock_OBSTACLE = threading.Lock()
 PROX_SENSOR = [0, 0, 0, 0, 0, 0, 0]
 OBSTACLE = False
-def thread_get_sensor():
+def thread_get_sensor(event):
     global PROX_SENSOR, OBSTACLE
     while 1:
         prox_sens_values = thymio.get_sensor()
@@ -139,14 +139,11 @@ def thread_get_sensor():
         lock_OBSTACLE.acquire()
         OBSTACLE = bool_obstacle
         lock_OBSTACLE.release()
+        if event.is_set():
+            break
         
         time.sleep(0.1)
-
-Thread_sensor = threading.Thread(target=thread_get_sensor,)
-
-
-
-
+    print("Thread closing")
 
 
 
@@ -162,14 +159,7 @@ def set_speed(left, right):
         "motor.left.target": [left],
         "motor.right.target": [right],
     }   
-"""
-def get_data():
-    #Test function TOO: remove it
-    
-    global ODOMETRY
-    while 1:
-        ODOMETRY = [node["motor.left.speed"], node["motor.right.speed"]]
-"""
+
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
 """
@@ -184,16 +174,20 @@ def get_data():
 """
 
 # Main Thread
-if __name__ == '__main__':
+def main():
+    global ODOMETRY, PROX_SENSOR
+    RUNNING = threading.Event()
+    Thread_odometry = threading.Thread(target=thread_update_odometry, args=(RUNNING,))
+    Thread_sensor = threading.Thread(target=thread_get_sensor, args=(RUNNING,))
     # Open camera
     cap = cv2.VideoCapture(CAMERA)
     # Check if camera opened successfully
     if (cap.isOpened()== False): 
         print("Error opening video stream or file")
     else:
-        print("Camera is openend")
+        print("Camera is opened")
 
-    # Need this loop to work
+    # While video stream opened
     while(cap.isOpened()):
     ########## Take first picture for init and initialize MAP ###################################
         for i in range(1,20):
@@ -208,18 +202,16 @@ if __name__ == '__main__':
                 ret, frame = cap.read()
                 i+=1
         # Initialize MAP
-        rescMap, M, MAPwidth, MAPheight, b_coords, goal_coords, obst_coords, POS_VISION, ANGLE_VISION = vision.map_init(frame)
+        rescMap, M, IMGwidth, IMGheight, mapSize, mm2pix, goal_coords, obst_coords, POS_VISION, ANGLE_VISION = vision.map_init(frame)
         ##############################################################################################
         ############ Path planning ###################################################################
-        mapSize = [MAPwidth, MAPheight]
         globNav = Global_Navigation.Global_Navigation(obst_coords,POS_VISION,goal_coords,mapSize)        
         shortestpath=globNav.create_path()
             
         ##############################################################################################
-
         ##### VISUALIZATION #########################################################################
         visualisation.visualisation(rescMap, POS_VISION[0], POS_VISION[1], obst_coords, ANGLE_VISION, shortestpath, goal_coords[0], goal_coords[1])
-        cv2.waitKey(0)
+        cv2.waitKey(0) # Start the robot
         ##### END VISUALIZATION #####################################################################
             
         # Init threads and Thymio
@@ -235,8 +227,8 @@ if __name__ == '__main__':
         #thymio_angle = ODOMETRY[2]
         #thymio_pos = [ODOMETRY[0], ODOMETRY[1]]
         Sigma_angle = 0 # Init sigma for filtering
-        Sigma_pos = 0 # Init sigma for fiiltering
-        ind_next =1 # Init index for next goal on shortestpath
+        Sigma_pos = 0 # Init sigma for filtering
+        ind_next = 1 # Init index for next goal on shortestpath
         goal_pos = shortestpath[ind_next]
         PID = MotionControl.MotionControl()
 
@@ -254,15 +246,10 @@ if __name__ == '__main__':
                 aw(thymio.client.sleep(0.1))
 
                 ########### Update Thymio Position and Angle ##################################################
-                #lock_ODOMETRY.acquire()
-                #thymio_angle = ODOMETRY[2]
-                #thymio_pos = [ODOMETRY[0], ODOMETRY[1]]
-                #lock_ODOMETRY.release()
-                ### Via vision
                 # Capture new frame
                 ret, frame = cap.read()
                 # Return Thymio coordinates and angle from vision
-                rescMap, POS_VISION, ANGLE_VISION = vision.updateThymioPos(frame, M, MAPwidth, MAPheight)
+                rescMap, POS_VISION, ANGLE_VISION = vision.updateThymioPos(frame, M, IMGwidth, IMGheight)
                 if np.isnan(POS_VISION[0]) or np.isnan(POS_VISION[1]):
                     POS_VISION = [ODOMETRY[0], ODOMETRY[1]]
                     print("Position lost")
@@ -270,17 +257,19 @@ if __name__ == '__main__':
                     ANGLE_VISION = ODOMETRY[2]
                 ##############################################################################################
                 ################## FILTERING #################################################################
+                lock_ODOMETRY.acquire()
                 ODOMETRY[2], Sigma_angle = filtering.kalmanFilterAngle(ODOMETRY[2], ANGLE_VISION, Sigma_angle)
                 ODOMETRY[0], ODOMETRY[1], Sigma_pos = filtering.kalmanFilterPos(ODOMETRY[0], ODOMETRY[1], POS_VISION[0], POS_VISION[1], Sigma_pos)
-
+                lock_ODOMETRY.release()
                 # check if goal reached
-                if (abs(ODOMETRY[0]-goal_pos[0]) < 15 and abs(ODOMETRY[1]-goal_pos[1]) < 15):
+                if ((ODOMETRY[0]-goal_pos[0])**2 + (ODOMETRY[1]-goal_pos[1])**2 < 225):
                     if ind_next == len(shortestpath)-1:
                         thymio.set_speed(0, 0)
                         print("Destination reached ! Thank you for flying with us")
                         break
                     else:
                         ind_next += 1
+                        PID.PID_integral = 0
                 # update goal point
                 goal_pos = shortestpath[ind_next]
 
@@ -291,19 +280,8 @@ if __name__ == '__main__':
                 thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
                 time_last_ctrl = time.time()
                 ###############################################################################################
-                #lock_PROX_SENSOR.acquire()
-                #print(PROX_SENSOR)
-                #lock_PROX_SENSOR.release()
-                # Stop obstacle condtion
-                """if(locNav.detect_obstacle(PROX_SENSOR)) :
-                    left_speed, right_speed = locNav.turn_if_obstacle(PROX_SENSOR)
-                    thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
-                    aw(thymio.client.sleep(1.0))
-                    left_speed, right_speed = locNav.go_straight()
-                    thymio.set_speed(math.floor(left_speed), math.floor(right_speed))"""
-                    
                 ##### VISUALIZATION #########
-                visualisation.visuDuringRun(rescMap, ODOMETRY[0], ODOMETRY[1], obst_coords, ODOMETRY[2], ANGLE_VISION, shortestpath, goal_coords[0], goal_coords[1])
+                visualisation.visuDuringRun(rescMap, ODOMETRY[0], ODOMETRY[1], obst_coords, ODOMETRY[2], Sigma_angle, shortestpath, goal_coords[0], goal_coords[1])
                 ##### END VISUALIZATION ############
             else :
                 while(OBSTACLE) :
@@ -319,8 +297,18 @@ if __name__ == '__main__':
         break
         
     thymio.set_speed(0, 0)
+    RUNNING.set()
+    Thread_odometry.join()
+    Thread_sensor.join()
+    cap.release()
     cv2.destroyAllWindows()
     # When everything done, release the video capture object
-    cap.release()
+
     aw(thymio.node.unlock())
-# %%
+    
+
+
+
+if __name__ == '__main__':
+    main()
+    print("Thank you")

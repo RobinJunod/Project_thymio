@@ -10,14 +10,21 @@ k_sobel = 5
 MAP_WIDTH = 1070 # mm
 THYMIO_WIDTH = 110 # mm
 
-RED_L = np.array([105,75,129],np.uint8)  # Set the Lower and higher range value of color for filter
-RED_H = np.array([179,160,255],np.uint8)
+# Set the Lower and Higher range value of color for filter
+#RED_L = np.array([105,75,129],np.uint8)  
+#RED_H = np.array([179,160,255],np.uint8)
+RED_L= np.array([133,50,130]) 
+RED_H = np.array([179,255,255])
 
-GREEN_L = np.array([0, 60, 90],np.uint8)
-GREEN_H = np.array([87, 255, 255],np.uint8)
+#GREEN_L = np.array([0, 60, 90],np.uint8)
+#GREEN_H = np.array([87, 255, 255],np.uint8)
+GREEN_L = np.array([0, 0, 140],np.uint8)
+GREEN_H = np.array([90, 90, 255],np.uint8)
 
-BLUE_L = np.array([0, 79, 154],np.uint8)
-BLUE_H = np.array([156, 255, 255],np.uint8)
+#BLUE_L = np.array([0, 79, 154],np.uint8)
+#BLUE_H = np.array([156, 255, 255],np.uint8)
+BLUE_L = np.array([0, 90, 120],np.uint8)
+BLUE_H = np.array([110, 255, 255],np.uint8)
 
 YELLOW_L = np.array([0, 0, 158],np.uint8)
 YELLOW_H = np.array([179, 240, 255],np.uint8)
@@ -50,20 +57,21 @@ def mapTransform(img,YELLOW_L, YELLOW_H):
 	# noise
 	filtered_img = cv2.bilateralFilter(field_gray,3,75,75)
 	# binary
-	tmp = cv2.threshold(filtered_img, 20, 255, cv2.THRESH_BINARY_INV)[1]
+	binary_img = cv2.threshold(filtered_img, 20, 255, cv2.THRESH_BINARY_INV)[1]
 
 	# find contours of MAP
-	contours, _ = cv2.findContours(tmp.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-	approx_array = []
+	contours, _ = cv2.findContours(binary_img.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+	approx_cont = []
 	circle = []
 	for cnt in contours:
 		approx = cv2.approxPolyDP(cnt, 0.03*cv2.arcLength(cnt, True), True)
 		area = cv2.contourArea(approx)
-		if (tmp.shape[0]*tmp.shape[1]/2 < area < tmp.shape[0]*tmp.shape[1]):
-			approx_array.append(approx.reshape(-1, 2))          
+		# Criteria on the area to get only the external frame and not the obstacle or thymio if color filter did not work fine
+		if (binary_img.shape[0]*binary_img.shape[1]/2 < area < binary_img.shape[0]*binary_img.shape[1]):
+			approx_cont.append(approx.reshape(-1, 2))          
     
-    #rectifying
-	pts1 = approx_array[0]
+    # Rectify
+	pts1 = approx_cont[0]
     #Target Points
 	t1 = pts1[0,0] #corner top left
 	t2 = pts1[0,1]
@@ -81,23 +89,22 @@ def mapTransform(img,YELLOW_L, YELLOW_H):
 	rescaled = dst[0:height, 0:width]
 	return rescaled, M, width, height
 
-
-def rescale_borders(img,mW,tW):
-	# Conversion pixel to mm
-	map_width = mW #mm
+def mm2pixRatio(img):
+	# Conversion mm to pixel
 	pix_width = img.shape[1]
-	pix_per_mm = pix_width / map_width
-	thymio_width_mm = tW
-	global half_thymio_pix
-	half_thymio_pix = m.floor(thymio_width_mm*pix_per_mm/2)+1
+	pix_per_mm = pix_width / MAP_WIDTH
+
+	return pix_per_mm
+
+def rescale_borders(img):
 	map_rescaled = np.copy(img)
-	map_rescaled = map_rescaled[half_thymio_pix:img.shape[0]-half_thymio_pix,half_thymio_pix:img.shape[1]-half_thymio_pix]
-	b_coords = [[0,0],[0,map_rescaled.shape[0]],[map_rescaled.shape[0],map_rescaled.shape[1]],[map_rescaled.shape[1],0]]
-	return map_rescaled, b_coords
+	map_rescaled = map_rescaled[10:img.shape[0]-10, 10:img.shape[1]-10]
+
+	return map_rescaled
 	
 
 def findThymio(img, lower_range, upper_range, k_small, k_big, THRESH):
-	hsv, mask, thymio = colorFilter(img,lower_range,upper_range)
+	_, _, thymio = colorFilter(img,lower_range,upper_range)
 	thymio_gray = cv2.cvtColor(thymio, cv2.COLOR_BGR2GRAY)
 
 	# Find big round by eroding s.t. small round disapear
@@ -111,34 +118,27 @@ def findThymio(img, lower_range, upper_range, k_small, k_big, THRESH):
 
 	tmp = cv2.threshold(tbr, THRESH, 255, cv2.THRESH_BINARY_INV)[1]
 	tmp2 = cv2.threshold(filt_tsr, THRESH, 255, cv2.THRESH_BINARY_INV)[1]
-	idx = np.where(tmp==0)
-	BR = [np.mean(idx[1]),np.mean(idx[0])]
-	idx2 = np.where(tmp2==0)
-	CR = [np.mean(idx2[1]),np.mean(idx2[0])]
 
-	posX = np.mean([CR[0],BR[0]])
-	posY = np.mean([CR[1],BR[1]])
+	idx = np.where(tmp==0)
+	if not idx:
+		BR = [np.nan,np.nan]
+	else:
+		BR = [np.mean(idx[1]),np.mean(idx[0])]
+	
+	idx2 = np.where(tmp2==0)
+	if not idx2:
+		SR = [np.nan,np.nan]
+	else:
+		SR = [np.mean(idx2[1]),np.mean(idx2[0])]
+
+	posX = BR[0] # Big round is at the center of rotation of the wheels so give that as thymio position
+	posY = BR[1]
 	pos = [posX,posY]
-	dx = CR[0]-BR[0]
-	dy = -(CR[1]-BR[1])
+	dx = SR[0]-BR[0]
+	dy = -(SR[1]-BR[1])
 	
 	angle = m.atan2(dy,dx)
 
-
-	"""
-	if (dx == 0) and (dy > 0):
-		angle = np.pi / 2
-	elif (dx == 0) and (dy < 0):
-		angle = -np.pi / 2
-	elif dy > 0 and dx > 0:
-		angle = np.arctan(dy/dx)
-	elif dy > 0 and dx <0:
-		angle = np.arctan(dy/dx) + np.pi /2
-	elif dy < 0 and dx > 0:
-		angle = 2*np.pi + np.arctan(dy/dx)
-	else:
-		angle = (3/2)*np.pi + np.arctan(dy/dx)
-	"""
 	return pos, angle
 	
 def findGoal(img,lower_range,upper_range,TRESH_L,TRESH_H):
@@ -150,7 +150,7 @@ def findGoal(img,lower_range,upper_range,TRESH_L,TRESH_H):
 	GOAL = [np.mean(idx[1]),np.mean(idx[0])]
 	return GOAL
 
-def findObst(img,lower_range,upper_range,TRESH_L,TRESH_H):
+def findObst(img,mm2pix,lower_range,upper_range,TRESH_L,TRESH_H):
 	hsv, mask, filt_img = colorFilter(img,lower_range,upper_range)
 	obst_gray = cv2.cvtColor(filt_img, cv2.COLOR_BGR2GRAY)
 	_, binary_img = cv2.threshold(obst_gray, TRESH_L, TRESH_H, cv2.THRESH_BINARY)
@@ -171,7 +171,7 @@ def findObst(img,lower_range,upper_range,TRESH_L,TRESH_H):
 			e1 = cnt[(j-1)%cnt.shape[0]]-corner
 			e2 = cnt[(j+1)%cnt.shape[0]]-corner
 			bisector = (e1 / np.linalg.norm(e1) + e2 / np.linalg.norm(e2))
-			exp_cnt[i][j] = corner - (half_thymio_pix + 20) * bisector / np.linalg.norm(bisector)
+			exp_cnt[i][j] = corner - (mm2pix*THYMIO_WIDTH*0.75) * bisector / np.linalg.norm(bisector)
 
 	exp_img = cv2.drawContours(binary_img.copy(), exp_cnt, -1, 255, thickness=cv2.FILLED)
 
@@ -189,37 +189,33 @@ def findObst(img,lower_range,upper_range,TRESH_L,TRESH_H):
 
 	return approx_array_exp, exp_img_app
 
+############### Functions used in MAIN ############################################################
+
 def map_init(img):
-    start_init = time.time() # for time computing
-    #### Map rescaling and rectifying
-    recMap, M, width, height = mapTransform(img,YELLOW_L, YELLOW_H)
-    rescMap, b_coords = rescale_borders(recMap,MAP_WIDTH,THYMIO_WIDTH)
+	### Map rescaling and rectifying
+	recMap, M, IMGwidth, IMGheight = mapTransform(img,YELLOW_L, YELLOW_H)
+	mm2pix = mm2pixRatio(recMap)
+	rescMap = rescale_borders(recMap)
+	mapsize = [rescMap.shape[1],rescMap.shape[0]]
     
-    ### Find Goal
-    goal_coords = findGoal(rescMap,RED_L,RED_H,20,255)
+	### Find Goal
+	goal_coords = findGoal(rescMap,RED_L,RED_H,20,255)
     
     ### Find Obstacles
-    obst_coords, image = findObst(rescMap,BLUE_L,BLUE_H,20,10)
+	obst_coords, image = findObst(rescMap,mm2pix,BLUE_L,BLUE_H,20,10)
     
     ### Find Thymio
-    t_coords, t_angle = findThymio(rescMap, GREEN_L, GREEN_H,3,17,20)
+	t_coords, t_angle = findThymio(rescMap, GREEN_L, GREEN_H,3,20,20)
     
-    end_init = time.time()
-    t_init = end_init-start_init
-    return rescMap, M, width, height, b_coords, goal_coords, obst_coords, t_coords, t_angle
+	return rescMap, M, IMGwidth, IMGheight, mapsize, mm2pix, goal_coords, obst_coords, t_coords, t_angle
 
 def updateThymioPos(img, M, width, height):
-    start_update = time.time()
-    #### Map rescaling and rectifying
-    #recMap, M, width, height = mapTransform(img,YELLOW_L, YELLOW_H)
-    #rescMap, b_coords = rescale_borders(recMap,MAP_WIDTH,THYMIO_WIDTH)
+    ### Map rescaling and rectifying
     dst = cv2.warpPerspective(img, M, (width, height))
     recMap = dst[0:height, 0:width]
-    rescMap, b_coords = rescale_borders(recMap,MAP_WIDTH,THYMIO_WIDTH)
+    rescMap = rescale_borders(recMap)
     ### Find Thymio
-    t_coords, t_angle = findThymio(rescMap, GREEN_L, GREEN_H,3,17,20)
+    t_coords, t_angle = findThymio(rescMap, GREEN_L, GREEN_H,3,20,20)
     
-    end_update = time.time()
-    t_update = end_update - start_update
     return rescMap, t_coords, t_angle
 
