@@ -3,7 +3,7 @@ import math
 
 
 class MotionControl:
-    def __init__(self, Kp=70, Ki=2, Kd=0.5):
+    def __init__(self, Kp=70, Ki=2, Kd=0.4):
         """Make a PID controller with the error being the angle error btwn thymio angle and thymio to objective angle
 
         Args:
@@ -53,9 +53,10 @@ class MotionControl:
         self.goal_angle = math.atan2(y_,x_)
                     
         self.angle_error = self.goal_angle - self.thymio_angle
-        if self.angle_error > np.pi :
-            self.angle_eror = 2*np.pi - self.angle_error
-        elif self.angle_error < -np.pi:
+
+        if self.angle_error >= np.pi :
+            self.angle_error = self.angle_error - 2*np.pi
+        elif self.angle_error <= -np.pi:
             self.angle_error = self.angle_error + 2*np.pi
         
         

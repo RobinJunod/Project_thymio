@@ -1,9 +1,9 @@
 import numpy as np
 
-q_angle = 0.1
+q_angle = 0.08
 q_pos = 10
-r_angle = 0.05
-r_pos = 5
+r_angle = 0.01
+r_pos = 2
 
 ##### Angle filtering
 
@@ -17,6 +17,13 @@ def kalmanFilterAngle(mu_est_angle, y_angle, Sigma_angle):
             i_t = i_t + 2*np.pi
     K_t = Sigma_angle / (Sigma_angle+r_angle)
     mu_angle = mu_est_angle + K_t * i_t
+
+    if mu_angle >= np.pi:
+        mu_angle = mu_angle - 2*np.pi
+    elif mu_angle <= -np.pi:
+        mu_angle = 2*np.pi - mu_angle
+    else:
+        mu_angle = mu_angle
     Sigma_angle = (1-K_t)*Sigma_angle
 
     return mu_angle, Sigma_angle
