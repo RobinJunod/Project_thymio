@@ -114,8 +114,9 @@ class Global_Navigation:
                 tmp_link1=[all_nodes[i],all_nodes[i+j+1]]
             
                 for obstacle in all_obstacles:
-                
-                    if (all_nodes[i] in obstacle) and (all_nodes[i+j+1] in obstacle): #identify when 2 vertices of the same polygon are connected
+                    
+                    #identify when 2 vertices of the same polygon are connected
+                    if (all_nodes[i] in obstacle) and (all_nodes[i+j+1] in obstacle): 
                         if obstacle.index(all_nodes[i])==len(obstacle)-1:
                             if (obstacle.index(all_nodes[i+j+1]) != 0) and (obstacle.index(all_nodes[i])!=obstacle.index(all_nodes[i+j+1])+1):
                                 o1=self.orientation(all_nodes[i],all_nodes[i+j+1],obstacle[obstacle.index(all_nodes[i])-1])
@@ -141,9 +142,7 @@ class Global_Navigation:
                                     intersection=True
                                     break
                         
-                     
-                    
-                        
+                    #implement the segment intersection function between the current pair of nodes and all the edges of all the obstacles
                     for index, vertice in enumerate(obstacle):
                     
                         if index== len(obstacle)-1: #last point of the obstacle
