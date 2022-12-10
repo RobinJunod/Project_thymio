@@ -258,16 +258,6 @@ def main():
                 ret, frame = cap.read()
                 # Return Thymio coordinates and angle from vision
                 rescMap, POS_VISION, ANGLE_VISION = vision.updateThymioPos(frame, M, IMGwidth, IMGheight)
-
-                """if ANGLE_VISION < 0 and ODOMETRY[2] > 0 and abs(ANGLE_VISION+2*np.pi-ODOMETRY[2]) > np.pi/4:
-                    ANGLE_VISION = np.nan
-                elif ANGLE_VISION > 0 and ODOMETRY[2] < 0 and abs(ANGLE_VISION-2*np.pi-ODOMETRY[2]) > np.pi/4:
-                    ANGLE_VISION = np.nan
-                elif ANGLE_VISION < 0 and ODOMETRY[2] < 0 and abs(ANGLE_VISION-ODOMETRY[2]) > np.pi/4:
-                    ANGLE_VISION = np.nan
-                elif ANGLE_VISION > 0 and ODOMETRY[2] > 0 and abs(ANGLE_VISION-ODOMETRY[2]) > np.pi/4:
-                    ANGLE_VISION = np.nan"""
-               
                
                 # Do filtering if not nan
                 lock_ODOMETRY.acquire()
@@ -275,7 +265,6 @@ def main():
                     ODOMETRY[2], Sigma_angle = filtering.kalmanFilterAngle(ODOMETRY[2], ANGLE_VISION, Sigma_angle)
                     ODOMETRY[0], ODOMETRY[1], Sigma_pos = filtering.kalmanFilterPos(ODOMETRY[0], ODOMETRY[1], POS_VISION[0], POS_VISION[1], Sigma_pos)
                     LIST_ODO.append(ODOMETRY)
-                   
                 else:
                     print("Position lost")
                     Sigma_angle = Sigma_angle + 0.008
