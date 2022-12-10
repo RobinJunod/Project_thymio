@@ -290,27 +290,18 @@ if __name__ == '__main__':
                 [left_speed, right_speed] = PID.PID(d_time, 100, 100)
                 thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
                 time_last_ctrl = time.time()
-                ###############################################################################################
-                #lock_PROX_SENSOR.acquire()
-                #print(PROX_SENSOR)
-                #lock_PROX_SENSOR.release()
-                # Stop obstacle condtion
-                """if(locNav.detect_obstacle(PROX_SENSOR)) :
-                    left_speed, right_speed = locNav.turn_if_obstacle(PROX_SENSOR)
-                    thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
-                    aw(thymio.client.sleep(1.0))
-                    left_speed, right_speed = locNav.go_straight()
-                    thymio.set_speed(math.floor(left_speed), math.floor(right_speed))"""
+
                     
                 ##### VISUALIZATION #########
                 visualisation.visuDuringRun(rescMap, ODOMETRY[0], ODOMETRY[1], obst_coords, ODOMETRY[2], ANGLE_VISION, shortestpath, goal_coords[0], goal_coords[1])
                 ##### END VISUALIZATION ############
             else :
+                ##### LOCAL NAVIGATION ######### 
                 while(OBSTACLE) :
                     left_speed, right_speed = locNav.turn_if_obstacle(PROX_SENSOR)
                     thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
                     aw(thymio.client.sleep(0.1))    
-                left_speed, right_speed = locNav.go_straight([left_speed,right_speed])
+                left_speed, right_speed = locNav.curvilinear_traj([left_speed,right_speed])
                 thymio.set_speed(math.floor(left_speed), math.floor(right_speed))   
                 aw(thymio.client.sleep(2.0))     
 
