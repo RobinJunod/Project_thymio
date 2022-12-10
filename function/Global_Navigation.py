@@ -98,11 +98,7 @@ class Global_Navigation:
         nodes_close_edges=[]
         for obstacle in all_obstacles:
             for node in obstacle:
-<<<<<<< HEAD
-                if (node[0]<= 38) or (node[0]>= self.max_valx-38) or (node[1]<=38) or (node[1]>=self.max_valy-38):
-=======
                 if (node[0]< 38) or (node[0]> self.max_valx-38) or (node[1]<38) or (node[1]>self.max_valy-38):
->>>>>>> 8a7b2385738cf1a6cb13e5fdaa76648e0de21c16
                     nodes_close_edges.append(node)
 
         for i in range(len(all_nodes)): 
@@ -287,8 +283,4 @@ class Global_Navigation:
 
         cv2.polylines(Img, np.int32([np.array(self.path).reshape((-1, 1, 2))]), False, (200, 0, 255), 3) 
 
-<<<<<<< HEAD
         plt.imshow(image)
-=======
-        plt.imshow(image)
->>>>>>> 8a7b2385738cf1a6cb13e5fdaa76648e0de21c16
