@@ -90,7 +90,7 @@ class MotionControl:
         self.pre_angle_error = self.angle_error
 
         # Wheel speed
-        return [int(ref_speed_l + self.u_t), int(ref_speed_r - self.u_t)]
+        return [int(ref_speed_l - self.u_t), int(ref_speed_r + self.u_t)]
 
     
     def plant(self,  speed_l, speed_r, pre_pos_x, pre_pos_y, pre_angle, d_time):
@@ -116,7 +116,7 @@ class MotionControl:
         speed_r = speed_r * THYMIO_SPEED_CONVERTION
 
         # compute new angle
-        d_angle = (speed_l - speed_r)/(4*THYMIO_RADIUS^2) * d_time
+        d_angle = (speed_r - speed_l)/(2*THYMIO_RADIUS) * d_time
         angle = pre_angle + d_angle
         # compute new pos
         direction_x = math.cos((pre_angle + angle)/2)

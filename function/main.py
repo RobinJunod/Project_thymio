@@ -90,7 +90,7 @@ def thread_update_odometry(thymio):
         # delta time btwn last and new speed recording
         d_time = time.time() - previous_time
         # compute new angle
-        d_angle = (speed_l - speed_r)/(4*47^2) * d_time
+        d_angle = (speed_l - speed_r)/(2*47) * d_time
         angle = pre_angle + d_angle
         # compute new pos
         direction_x = math.cos((pre_angle + angle)/2)
@@ -135,27 +135,6 @@ def thread_get_sensor(thymio):
 
 Thread_sensor = threading.Thread(target=thread_get_sensor, args=(thymio,))
 
-# &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
-# OLD FUNCTIONS
-def set_speed(left, right):
-    """
-    small function to be used with node.send_set_variables()
-    """
-    return {
-        "motor.left.target": [left],
-        "motor.right.target": [right],
-    }
-    
-
-    
-
-def get_data():
-    """Test function TODO: remove it
-    """
-    global ODOMETRY
-    while 1:
-        ODOMETRY = [node["motor.left.speed"], node["motor.right.speed"]]
 
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
