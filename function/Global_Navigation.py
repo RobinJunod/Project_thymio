@@ -201,12 +201,7 @@ class Global_Navigation:
 
         for point in [start, goal]:
             assert point[0]>=0 and point[0]<max_valx and point[1]>=0 and point[1]<max_valy ,"start or end goal not contained in the map"
-        #if occupancy_grid[start[0], start[1]]:
-        #    raise Exception('Start node is not traversable')
-
-        #if occupancy_grid[goal[0], goal[1]]:
-        #    raise Exception('Goal node is not traversable')
-
+            
         openSet = [start]
 
         closedSet = []
