@@ -259,7 +259,7 @@ class Global_Navigation:
 
 ############################ Plots ###########################
     
-    def plot_visibility_graph(self): #have to use method create_path before using this one
+    def plot_visibility_graph(self):
         Img=np.zeros((self.max_valy, self.max_valx,3), dtype='uint8')
 
         for obstacle in self.raw_obstacles_pos:
@@ -274,7 +274,7 @@ class Global_Navigation:
         plt.imshow(image)
         
         
-    def plot_shortest_path(self):#have to use method create_path before using this one
+    def plot_shortest_path(self):
         Img=np.zeros((self.max_valy, self.max_valx,3), dtype='uint8')
         for obstacle in self.raw_obstacles_pos:
             image = cv2.polylines(Img, [obstacle.reshape((-1, 1, 2))], True, (255,255,0), 5) 
