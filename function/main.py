@@ -153,21 +153,7 @@ def thread_get_sensor(event):
         
         time.sleep(0.1)
     print("Thread closing")
-
-
-
-
-# &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
-
-def set_speed(left, right):
-    
-    #small function to be used with node.send_set_variables()
-    
-    return {
-        "motor.left.target": [left],
-        "motor.right.target": [right],
-    }   
+ 
 
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
