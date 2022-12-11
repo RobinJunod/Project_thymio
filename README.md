@@ -14,3 +14,4 @@ For this project of mobile robotics, we were asked to use a Thymio II robot, a c
 ![ThymioFast](Video/first_part_gif.gif)
 ### Second part
 ![ThymioFast](Video/second_part_gif.gif)
+
