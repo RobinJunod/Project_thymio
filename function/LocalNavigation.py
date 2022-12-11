@@ -1,6 +1,3 @@
-import numpy as np
-import math
-import time
 
 
 class LocalNavigation:
@@ -53,5 +50,5 @@ class LocalNavigation:
         else :
             motor_left_target = NOMINAL_SPEED - DELTA_SPEED
             motor_right_target = NOMINAL_SPEED
-            
+
         return [motor_left_target,motor_right_target]

@@ -4,13 +4,12 @@ import math
 import matplotlib.pyplot as plt
 
 class MotionControl:
-    def __init__(self, Kp=70, Ki=2, Kd=0.5):
+    def __init__(self, Kp=70, Ki=2, Kd=0.4):
         """Make a PID controller with the error being the angle error btwn thymio angle and thymio to objective angle
-
         Args:
             Kp (int, optional): proportional coefficient. Defaults to 70.
             Ki (int, optional): integral coefficient. Defaults to 2.
-            Kd (float, optional): derivative coefficient. Defaults to 0.5.
+            Kd (float, optional): derivative coefficient. Defaults to 0.4.
         """
         self.thymio_angle = 0
         self.thymio_pos = [0,0]
@@ -26,7 +25,7 @@ class MotionControl:
         self.Kp = Kp 
         self.Ki = Ki
         self.Kd = Kd
-        self.d_time = 0.1 #240Hz = frequency for the discretization
+        #self.d_time = 0.1 #240Hz = frequency for the discretization
         
         # PID output speed differential
         self.u_t = 0
@@ -52,54 +51,49 @@ class MotionControl:
 
         # function to get the angle without /0 problem, and good computation speed
         self.goal_angle = math.atan2(y_,x_)
-                    
+        # compute error angle
         self.angle_error = self.goal_angle - self.thymio_angle
-        if self.angle_error > np.pi :
-            self.angle_eror = 2*np.pi - self.angle_error
-        elif self.angle_error < -np.pi:
-            self.angle_error = self.angle_error + 2*np.pi
         
+        # put error angle btwn -pi and pi
+        if self.angle_error > 3.1415:
+            self.angle_error = self.angle_error - 6.283
+        elif self.angle_error < - 3.1415:
+            self.angle_error = self.angle_error + 6.283
+            
         
-    def PID(self, d_time, ref_speed_l, ref_speed_r):
-        """PID implementation. We 
 
+    def PID(self, d_time, ref_speed_l, ref_speed_r):
+        """PID implementation.
         Args:
             d_time (float): time btwn the last and new speed allocation
             ref_speed_l (float): left reference speed at which the robot 
                                  is supposed to go in a straight line
             ref_speed_r (float): right reference speed at which the robot 
                                  is supposed to go in a straight line
-
         Returns:
             float list: motors speed
         """
         # Compute integral and derivative
-        if d_time > 0:
-            self.PID_integral = self.PID_integral + self.angle_error * d_time
-
-            self.PID_derivative = (self.angle_error - self.pre_angle_error)/d_time
-        else:
-            self.PID_integral = 0
-
+        if d_time == 0:
             self.PID_derivative = 0
+        else:
+            self.PID_derivative = (self.angle_error - self.pre_angle_error)/d_time
 
-
+        self.PID_integral = self.PID_integral + self.angle_error * d_time
         self.PID_proportional = self.angle_error
         
         self.u_t = self.Kp*self.PID_proportional + self.Ki*self.PID_integral + self.Kd*self.PID_derivative
-
         
         self.pre_angle_error = self.angle_error
 
         # Wheel speed
-        return [ref_speed_l - self.u_t, ref_speed_r + self.u_t]
+        return [int(ref_speed_l - self.u_t), int(ref_speed_r + self.u_t)]
 
     
     def plant(self,  speed_l, speed_r, pre_pos_x, pre_pos_y, pre_angle, d_time):
         """This function is used to simulate the PID controller. This can help us tuning the PID.
         Mainly used for the graphic. It is used to set the new motor speed found by the PID. This 
         part is like the odomerty part expect that the robot has a perfect(no noise) behaviour.
-
         Args:
             speed_l (float): motor left speed
             speed_r (float): motor right speed
@@ -107,7 +101,6 @@ class MotionControl:
             pre_pos_y (float): previous robot y position
             pre_angle (float): previous robot angle
             d_time (float): time between 2 values
-
         Returns:
             float list: position and angle of the robot
         """
@@ -118,7 +111,7 @@ class MotionControl:
         speed_r = speed_r * THYMIO_SPEED_CONVERTION
 
         # compute new angle
-        d_angle = (speed_l - speed_r)/(4*THYMIO_RADIUS^2) * d_time
+        d_angle = (speed_r - speed_l)/(2*THYMIO_RADIUS) * d_time
         angle = pre_angle + d_angle
         # compute new pos
         direction_x = math.cos((pre_angle + angle)/2)
@@ -138,12 +131,12 @@ if __name__=='__main__':
     # initatte robot and goal
     init_goal_pos = [1000, 1000]
     init_robot_speed = [100,100]
-    init_robot_angle = -2
+    init_robot_angle = -4
     init_robot_pos = [0,0]
     
     goal_pos = [1000, 1000]
     robot_speed = [100,100]
-    robot_angle = -2
+    robot_angle = -4
     robot_pos = [0,0]
     
     d_time = 1
@@ -151,7 +144,7 @@ if __name__=='__main__':
     
     # Create PID controller
     PID = MotionControl()
-    PID.update_angle_error(robot_angle, robot_pos, goal_pos)
+    PID.update_angle_error(init_robot_angle, init_robot_pos, init_goal_pos)
     # loop
     loop = 0
     while True:
@@ -173,5 +166,4 @@ if __name__=='__main__':
     plt.plot([0,1000], [0,1000], color = 'red', linestyle = 'solid')
     plt.plot([0,100*math.cos(init_robot_angle)], [0, 100 * math.sin(init_robot_angle)], color = 'green')
     plt.title('Thymio PID direction')
-#%%
     

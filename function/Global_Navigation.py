@@ -2,6 +2,7 @@ import math
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import vision
 
 class Global_Navigation:
     def __init__(self,obstacles_pos,thymio_pos,goal_pos,map_size):            
@@ -92,13 +93,14 @@ class Global_Navigation:
     
             
         neighbors = {node: [] for node in all_nodes}
-   
+        p2mm = vision.pix_per_mm
+        TW = vision.THYMIO_WIDTH
 
         #if the nodes of obstacles are too close from the edges of the maps, don't add them to the visiblity graph
         nodes_close_edges=[]
         for obstacle in all_obstacles:
             for node in obstacle:
-                if (node[0]< 38) or (node[0]> self.max_valx-38) or (node[1]<38) or (node[1]>self.max_valy-38):
+                if (node[0]<=(p2mm*TW*0.5)) or (node[0]>=self.max_valx-(p2mm*TW*0.5)) or (node[1]<=(p2mm*TW*0.5)) or (node[1]>=self.max_valy-(p2mm*TW*0.5)):
                     nodes_close_edges.append(node)
 
         for i in range(len(all_nodes)): 
