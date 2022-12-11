@@ -1,5 +1,5 @@
 ################################## IMPORTS #########################################
-# basic computation library
+#%% basic computation library
 import cv2
 import numpy as np
 import math
@@ -39,6 +39,8 @@ CAMERA = 2
 CREATE THE THYMIO CLASS THAT WILL BE USED IN THREADS, IN ORDER NOT TO HAVE A 
 GLOBAL VARIABLE NODE
 """
+
+
 class thymio():
     def __init__(self) -> None:
         self.client = ClientAsync()
@@ -46,7 +48,9 @@ class thymio():
         aw(self.node.lock()) 
         
     def set_speed(self, left_speed, right_speed) -> None:
-        self.node.send_set_variables(set_speed(left_speed, right_speed))
+        self.node.send_set_variables({
+        "motor.left.target": [left_speed],
+        "motor.right.target": [right_speed],})
     
     def get_speed(self) -> tuple:
         return [self.node["motor.left.speed"], self.node["motor.right.speed"]]
@@ -54,8 +58,8 @@ class thymio():
     def get_sensor(self) -> list:
         return list(self.node["prox.horizontal"])
 # CREATE THE THYMIO object
-
 thymio = thymio()
+#%%
 locNav = LocalNavigation.LocalNavigation()
 # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 """         _                           _         
