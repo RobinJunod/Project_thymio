@@ -10,4 +10,4 @@ For this project of mobile robotics, we were asked to use a Thymio II robot, a c
 - Local Navigation
 
 ## Video of the project
-![ThymioFast](Video/Thymio_ext.mp4)
+
