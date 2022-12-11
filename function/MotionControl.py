@@ -9,7 +9,7 @@ class MotionControl:
         Args:
             Kp (int, optional): proportional coefficient. Defaults to 70.
             Ki (int, optional): integral coefficient. Defaults to 2.
-            Kd (float, optional): derivative coefficient. Defaults to 0.5.
+            Kd (float, optional): derivative coefficient. Defaults to 0.4.
         """
         self.thymio_angle = 0
         self.thymio_pos = [0,0]
@@ -25,7 +25,7 @@ class MotionControl:
         self.Kp = Kp 
         self.Ki = Ki
         self.Kd = Kd
-        self.d_time = 0.1 #240Hz = frequency for the discretization
+        #self.d_time = 0.1 #240Hz = frequency for the discretization
         
         # PID output speed differential
         self.u_t = 0
@@ -46,7 +46,7 @@ class MotionControl:
         self.thymio_angle = thymio_angle
         self.goal_pos = goal_pos
         
-        y_ = goal_pos[1] - thymio_pos[1]
+        y_ = thymio_pos[1] - goal_pos[1]
         x_ = goal_pos[0] - thymio_pos[0]
 
         # function to get the angle without /0 problem, and good computation speed
@@ -63,7 +63,7 @@ class MotionControl:
         
 
     def PID(self, d_time, ref_speed_l, ref_speed_r):
-        """PID implementation. We 
+        """PID implementation.
         Args:
             d_time (float): time btwn the last and new speed allocation
             ref_speed_l (float): left reference speed at which the robot 
@@ -74,15 +74,15 @@ class MotionControl:
             float list: motors speed
         """
         # Compute integral and derivative
-        self.PID_integral = self.PID_integral + self.angle_error * d_time
+        if d_time == 0:
+            self.PID_derivative = 0
+        else:
+            self.PID_derivative = (self.angle_error - self.pre_angle_error)/d_time
 
+        self.PID_integral = self.PID_integral + self.angle_error * d_time
         self.PID_proportional = self.angle_error
         
-        self.PID_derivative = (self.angle_error - self.pre_angle_error)/d_time
-        
-        
         self.u_t = self.Kp*self.PID_proportional + self.Ki*self.PID_integral + self.Kd*self.PID_derivative
-
         
         self.pre_angle_error = self.angle_error
 
