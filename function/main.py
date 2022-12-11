@@ -197,7 +197,8 @@ def main():
             cap = cv2.VideoCapture(CAMERA)
             for i in range(1,20):
                 ret, frame = cap.read()
-
+        cv2.imshow("Raw image", frame)
+        cv2.waitKey(1)
         # Initialize MAP
         rescMap, M, IMGwidth, IMGheight, mapSize, goal_coords, obst_coords, POS_VISION, ANGLE_VISION = vision.map_init(frame)
 
@@ -244,7 +245,7 @@ def main():
                 ########### Update Thymio Position and Angle ##################################################
                 # Capture new frame
                 ret, frame = cap.read()
-
+                cv2.imshow("Raw image", frame)
                 # Return Thymio coordinates and angle from vision
                 rescMap, POS_VISION, ANGLE_VISION = vision.updateThymioPos(frame, M, IMGwidth, IMGheight)
                
