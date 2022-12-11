@@ -46,8 +46,8 @@ class MotionControl:
         self.thymio_angle = thymio_angle
         self.goal_pos = goal_pos
         
-        y_ = thymio_pos[1] - goal_pos[1]
         x_ = goal_pos[0] - thymio_pos[0]
+        y_ = thymio_pos[1] - goal_pos[1]
 
         # function to get the angle without /0 problem, and good computation speed
         self.goal_angle = math.atan2(y_,x_)   
@@ -109,21 +109,29 @@ class MotionControl:
         # convert speed in mm/s
         speed_l = speed_l * THYMIO_SPEED_CONVERTION
         speed_r = speed_r * THYMIO_SPEED_CONVERTION
+        
 
         # compute new angle
-        d_angle = (speed_r - speed_l)/(2*THYMIO_RADIUS) * d_time
+        d_angle = ((speed_r - speed_l)/(2*THYMIO_RADIUS)) * d_time
         angle = pre_angle + d_angle
-   
+    
+        if angle >= np.pi:
+            angle = angle - 2*np.pi 
+        elif angle <= -np.pi:
+            angle = 2*np.pi + angle
+        else:
+            angle = angle
+           
         # compute new pos
         direction_x = math.cos((pre_angle + angle)/2)
         direction_y = math.sin((pre_angle + angle)/2)
 
         pos_x = pre_pos_x + (speed_l + speed_r)/2 * direction_x * d_time
-        pos_y = pre_pos_y + (speed_l + speed_r)/2 * direction_y * d_time
+        pos_y = pre_pos_y - (speed_l + speed_r)/2 * direction_y * d_time
         # output update ODOMETRY
         return pos_x, pos_y, angle
         
-    
+
 
 
 if __name__=='__main__':
@@ -132,12 +140,12 @@ if __name__=='__main__':
     # initatte robot and goal
     init_goal_pos = [1000, 1000]
     init_robot_speed = [100,100]
-    init_robot_angle = -4
+    init_robot_angle = 0
     init_robot_pos = [0,0]
     
     goal_pos = [1000, 1000]
     robot_speed = [100,100]
-    robot_angle = -4
+    robot_angle = 0
     robot_pos = [0,0]
     
     d_time = 1
@@ -157,7 +165,7 @@ if __name__=='__main__':
         [robot_speed[0], robot_speed[1]] = PID.PID(d_time, 100, 100)
         # set speed and get new position and angle value
         [robot_pos[0], robot_pos[1], robot_angle] = PID.plant(robot_speed[0], robot_speed[1], robot_pos[0], robot_pos[1], robot_angle, d_time)
- 
+
         thymio_trajectory.append((robot_pos[0], robot_pos[1]))
         manathan_dist_to_goal = abs(goal_pos[1]-robot_pos[1]) + abs(goal_pos[0]-robot_pos[0])
         if manathan_dist_to_goal < 200 or loop > 100:
@@ -165,7 +173,7 @@ if __name__=='__main__':
     
     # plot trajectorie
     plt.scatter(*zip(*thymio_trajectory))
-    plt.plot([0,1000], [0,1000], color = 'red', linestyle = 'solid')
+    plt.plot([0,1000], [0, 1000], color = 'red', linestyle = 'solid')
     plt.plot([0,100*math.cos(init_robot_angle)], [0, 100 * math.sin(init_robot_angle)], color = 'green')
     plt.title('Thymio PID direction')
     
