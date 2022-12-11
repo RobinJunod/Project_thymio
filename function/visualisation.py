@@ -19,7 +19,7 @@ def visualisation(rescMap, POS_VISIONX, POS_VISIONY, obst_coords, ANGLE_VISION, 
     image = cv2.line(image,(x_t,y_t),(math.floor(x_t + 30*math.cos(ANGLE_VISION)),math.floor(y_t-30*math.sin(ANGLE_VISION))),(0,0,0),5)
     image = cv2.circle(image, (x_t,y_t), 30, (0,255,0), 2)
     image = cv2.polylines(image, np.int32([np.array(shortestpath).reshape((-1, 1, 2))]), False, (200, 0, 255), 3)
-    resized_up = cv2.resize(image, [1*image.shape[1],1*image.shape[0]], interpolation= cv2.INTER_LINEAR)
+    resized_up = cv2.resize(image, [2*image.shape[1],2*image.shape[0]], interpolation= cv2.INTER_LINEAR)
     cv2.imshow("Display window", resized_up)
 
 def visuDuringRun(rescMap, POS_X, POS_Y, Sigma_pos, obst_coords, newANGLE, Sigma_angle, shortestpath, goal_coordsX, goal_coordsY):
@@ -39,6 +39,6 @@ def visuDuringRun(rescMap, POS_X, POS_Y, Sigma_pos, obst_coords, newANGLE, Sigma
 
     image = cv2.circle(image, (x_t,y_t), 30, (0,255,0), 2)
     image = cv2.polylines(image, np.int32([np.array(shortestpath).reshape((-1, 1, 2))]), False, (200, 0, 255), 3)
-    resized_up = cv2.resize(image, [1*image.shape[1],1*image.shape[0]], interpolation= cv2.INTER_LINEAR)
+    resized_up = cv2.resize(image, [2*image.shape[1],2*image.shape[0]], interpolation= cv2.INTER_LINEAR)
     cv2.imshow("Display window", resized_up)
                     
