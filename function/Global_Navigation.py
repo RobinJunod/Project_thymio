@@ -100,7 +100,7 @@ class Global_Navigation:
         nodes_close_edges=[]
         for obstacle in all_obstacles:
             for node in obstacle:
-                if (node[0]<=(p2mm*TW*0.6)) or (node[0]>=self.max_valx-(p2mm*TW*0.6)) or (node[1]<=(p2mm*TW*0.6)) or (node[1]>=self.max_valy-(p2mm*TW*0.6)):
+                if (node[0]<=(p2mm*TW*0.5)) or (node[0]>=self.max_valx-(p2mm*TW*0.5)) or (node[1]<=(p2mm*TW*0.5)) or (node[1]>=self.max_valy-(p2mm*TW*0.5)):
                     nodes_close_edges.append(node)
 
         for i in range(len(all_nodes)): 
