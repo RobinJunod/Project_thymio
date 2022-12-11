@@ -135,17 +135,16 @@ class MotionControl:
 
 
 if __name__=='__main__':
-    # TODO: an implementation to show the tymio implementation
     
     # initatte robot and goal
     init_goal_pos = [1000, 1000]
     init_robot_speed = [100,100]
-    init_robot_angle = 0
+    init_robot_angle = 2
     init_robot_pos = [0,0]
     
     goal_pos = [1000, 1000]
     robot_speed = [100,100]
-    robot_angle = 0
+    robot_angle = 2
     robot_pos = [0,0]
     
     d_time = 1
@@ -170,11 +169,13 @@ if __name__=='__main__':
         manathan_dist_to_goal = abs(goal_pos[1]-robot_pos[1]) + abs(goal_pos[0]-robot_pos[0])
         if manathan_dist_to_goal < 200 or loop > 100:
             break
-    
+    ax = plt.gca()
+    ax.invert_yaxis()
     # plot trajectorie
     plt.scatter(*zip(*thymio_trajectory))
     plt.plot([0,1000], [0, 1000], color = 'red', linestyle = 'solid')
-    plt.plot([0,100*math.cos(init_robot_angle)], [0, 100 * math.sin(init_robot_angle)], color = 'green')
+    plt.plot([0,100*math.cos(init_robot_angle)], [0, -100 * math.sin(init_robot_angle)], color = 'green')
     plt.title('Thymio PID direction')
+    plt.show()
     
 # %%
