@@ -306,7 +306,7 @@ def main():
                     left_speed, right_speed = locNav.turn_if_obstacle(PROX_SENSOR)
                     thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
                     aw(thymio.client.sleep(0.1))    
-                left_speed, right_speed = locNav.go_straight([left_speed,right_speed])
+                left_speed, right_speed = locNav.curvilinear_traj([left_speed,right_speed])
                 thymio.set_speed(math.floor(left_speed), math.floor(right_speed))   
                 aw(thymio.client.sleep(2.5))     
 

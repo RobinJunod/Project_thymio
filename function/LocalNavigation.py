@@ -41,7 +41,7 @@ class LocalNavigation:
 
         return [motor_left_target,motor_right_target]
 
-    def go_straight(self, speeds) :
+    def curvilinear_traj(self, speeds) :
         NOMINAL_SPEED = 160
         DELTA_SPEED = 60
         if(speeds[0]<speeds[1]) :
