@@ -11,7 +11,8 @@ For this project of mobile robotics, we were asked to use a Thymio II robot, a c
 
 ## Video of the project
 ### First part
-![ThymioFast](Video/first_part_gif.gif)
+![](https://github.com/Your_Repository_Name/Your_GIF_Name.gif)
+![FirstVid](https://github.com/RobinJunod/Project_thymio/blob/main/Video/first_part_gif.gif)
 ### Second part
-![ThymioFast](Video/second_part_gif.gif)
+![SecondVid](https://github.com/RobinJunod/Project_thymio/blob/main/Video/second_part_gif.gif)
 
