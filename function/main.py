@@ -30,7 +30,6 @@ global PROX_SENSOR, ODOMETRY, OBSTACLE
 # Global constants
 THYMIO_RADIUS = 47 # in [mm]
 THYMIO_SPEED_CONVERTION = 0.3175373
-LIST_ODO = []
 # Camera number and bool for thread 
 CAMERA = 2
 
@@ -79,7 +78,7 @@ def thread_update_odometry(event):
         thymio (): will use the global variables node and ODOMETRY
     """
     # take glabal variable
-    global ODOMETRY, THYMIO_RADIUS, THYMIO_SPEED_CONVERTION, LIST_ODO
+    global ODOMETRY, THYMIO_RADIUS, THYMIO_SPEED_CONVERTION
     while 1:
         speed_l = thymio.get_speed()[0]
         speed_r = thymio.get_speed()[1]
@@ -112,7 +111,6 @@ def thread_update_odometry(event):
         # output update ODOMETRY
         lock_ODOMETRY.acquire()
         ODOMETRY = [pos_x, pos_y, angle, previous_time, d_time]
-        LIST_ODO.append(ODOMETRY)
         lock_ODOMETRY.release()
         if event.is_set():
             break
@@ -174,7 +172,7 @@ def thread_get_sensor(event):
 
 # Main Thread
 def main():
-    global ODOMETRY, PROX_SENSOR, MM_TO_PIX_CONVERTION
+    global ODOMETRY, PROX_SENSOR
     RUNNING = threading.Event()
     Thread_odometry = threading.Thread(target=thread_update_odometry, args=(RUNNING,))
     Thread_sensor = threading.Thread(target=thread_get_sensor, args=(RUNNING,))
@@ -235,7 +233,7 @@ def main():
         PID.update_angle_error(ODOMETRY[2], [ODOMETRY[0], ODOMETRY[1]], goal_pos)
         # Calculate speed from angle error and set initial speed
         [left_speed, right_speed] = PID.PID(d_time, 100, 100)
-        thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
+        thymio.set_speed(left_speed, right_speed)
         time_last_ctrl = time.time()
         #&&&&&&&&&&&&&&&&&&&&&&& main loop (while thymio not in goal region) &&&&&&&&&&&&&&&&&&&&&&&&&&&&&
         while 1:
@@ -246,6 +244,7 @@ def main():
                 ########### Update Thymio Position and Angle ##################################################
                 # Capture new frame
                 ret, frame = cap.read()
+
                 # Return Thymio coordinates and angle from vision
                 rescMap, POS_VISION, ANGLE_VISION = vision.updateThymioPos(frame, M, IMGwidth, IMGheight)
                
@@ -254,7 +253,6 @@ def main():
                 if ~np.isnan(POS_VISION[0]) and ~np.isnan(POS_VISION[1]) and ~np.isnan(ANGLE_VISION):
                     ODOMETRY[2], Sigma_angle = filtering.kalmanFilterAngle(ODOMETRY[2], ANGLE_VISION, Sigma_angle)
                     ODOMETRY[0], ODOMETRY[1], Sigma_pos = filtering.kalmanFilterPos(ODOMETRY[0], ODOMETRY[1], POS_VISION[0], POS_VISION[1], Sigma_pos)
-                    LIST_ODO.append(ODOMETRY)
                 else:
                     print("Position lost")
                     Sigma_angle = Sigma_angle + 0.008
@@ -285,7 +283,7 @@ def main():
                 PID.update_angle_error(ODOMETRY[2], [ODOMETRY[0], ODOMETRY[1]], goal_pos)
                 d_time = time.time() - time_last_ctrl
                 [left_speed, right_speed] = PID.PID(d_time, 100, 100)
-                thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
+                thymio.set_speed(left_speed, right_speed)
                 time_last_ctrl = time.time()
 
                 ##### VISUALIZATION #########
@@ -306,6 +304,7 @@ def main():
         break
         
     thymio.set_speed(0, 0)
+
     RUNNING.set()
     Thread_odometry.join()
     Thread_sensor.join()
