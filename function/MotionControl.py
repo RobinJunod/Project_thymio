@@ -50,7 +50,7 @@ class MotionControl:
         x_ = goal_pos[0] - thymio_pos[0]
 
         # function to get the angle without /0 problem, and good computation speed
-        self.goal_angle = math.atan2(y_,x_)
+        self.goal_angle = math.atan2(y_,x_)   
         # compute error angle
         self.angle_error = self.goal_angle - self.thymio_angle
         
@@ -113,6 +113,7 @@ class MotionControl:
         # compute new angle
         d_angle = (speed_r - speed_l)/(2*THYMIO_RADIUS) * d_time
         angle = pre_angle + d_angle
+   
         # compute new pos
         direction_x = math.cos((pre_angle + angle)/2)
         direction_y = math.sin((pre_angle + angle)/2)
@@ -156,9 +157,10 @@ if __name__=='__main__':
         [robot_speed[0], robot_speed[1]] = PID.PID(d_time, 100, 100)
         # set speed and get new position and angle value
         [robot_pos[0], robot_pos[1], robot_angle] = PID.plant(robot_speed[0], robot_speed[1], robot_pos[0], robot_pos[1], robot_angle, d_time)
+ 
         thymio_trajectory.append((robot_pos[0], robot_pos[1]))
         manathan_dist_to_goal = abs(goal_pos[1]-robot_pos[1]) + abs(goal_pos[0]-robot_pos[0])
-        if manathan_dist_to_goal < 200 or loop > 300:
+        if manathan_dist_to_goal < 200 or loop > 100:
             break
     
     # plot trajectorie
@@ -167,3 +169,4 @@ if __name__=='__main__':
     plt.plot([0,100*math.cos(init_robot_angle)], [0, 100 * math.sin(init_robot_angle)], color = 'green')
     plt.title('Thymio PID direction')
     
+# %%
