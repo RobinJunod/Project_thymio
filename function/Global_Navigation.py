@@ -116,8 +116,9 @@ class Global_Navigation:
                 tmp_link1=[all_nodes[i],all_nodes[i+j+1]]
             
                 for obstacle in all_obstacles:
-                
-                    if (all_nodes[i] in obstacle) and (all_nodes[i+j+1] in obstacle): #identify when 2 vertices of the same polygon are connected
+                    
+                    #identify when 2 vertices of the same polygon are connected
+                    if (all_nodes[i] in obstacle) and (all_nodes[i+j+1] in obstacle): 
                         if obstacle.index(all_nodes[i])==len(obstacle)-1:
                             if (obstacle.index(all_nodes[i+j+1]) != 0) and (obstacle.index(all_nodes[i])!=obstacle.index(all_nodes[i+j+1])+1):
                                 o1=self.orientation(all_nodes[i],all_nodes[i+j+1],obstacle[obstacle.index(all_nodes[i])-1])
@@ -143,9 +144,7 @@ class Global_Navigation:
                                     intersection=True
                                     break
                         
-                     
-                    
-                        
+                    #implement the segment intersection function between the current pair of nodes and all the edges of all the obstacles
                     for index, vertice in enumerate(obstacle):
                     
                         if index== len(obstacle)-1: #last point of the obstacle
@@ -199,12 +198,7 @@ class Global_Navigation:
 
         for point in [start, goal]:
             assert point[0]>=0 and point[0]<max_valx and point[1]>=0 and point[1]<max_valy ,"start or end goal not contained in the map"
-        #if occupancy_grid[start[0], start[1]]:
-        #    raise Exception('Start node is not traversable')
-
-        #if occupancy_grid[goal[0], goal[1]]:
-        #    raise Exception('Goal node is not traversable')
-
+            
         openSet = [start]
 
         closedSet = []
@@ -266,7 +260,7 @@ class Global_Navigation:
 
 ############################ Plots ###########################
     
-    def plot_visibility_graph(self): #have to use method create_path before using this one
+    def plot_visibility_graph(self):
         Img=np.zeros((self.max_valy, self.max_valx,3), dtype='uint8')
 
         for obstacle in self.raw_obstacles_pos:
@@ -281,7 +275,7 @@ class Global_Navigation:
         plt.imshow(image)
         
         
-    def plot_shortest_path(self):#have to use method create_path before using this one
+    def plot_shortest_path(self):
         Img=np.zeros((self.max_valy, self.max_valx,3), dtype='uint8')
         for obstacle in self.raw_obstacles_pos:
             image = cv2.polylines(Img, [obstacle.reshape((-1, 1, 2))], True, (255,255,0), 5) 

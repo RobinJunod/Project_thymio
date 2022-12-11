@@ -297,11 +297,12 @@ def main():
                 [left_speed, right_speed] = PID.PID(d_time, 100, 100)
                 thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
                 time_last_ctrl = time.time()
-                ###############################################################################################
+
                 ##### VISUALIZATION #########
                 visualisation.visuDuringRun(rescMap, ODOMETRY[0], ODOMETRY[1], Sigma_pos, obst_coords, ODOMETRY[2], Sigma_angle, shortestpath, goal_coords[0], goal_coords[1])
                 ##### END VISUALIZATION ############
             else :
+                ##### LOCAL NAVIGATION ######### 
                 while(OBSTACLE) :
                     left_speed, right_speed = locNav.turn_if_obstacle(PROX_SENSOR)
                     thymio.set_speed(math.floor(left_speed), math.floor(right_speed))
